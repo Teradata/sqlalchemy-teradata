@@ -65,24 +65,25 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
 #                        self._index_identifier(index.name)))
 
 
-class TeradataDialect(default.DefaultDialect):
-    name = 'teradata'
-    #supports_sane_rowcount = False
-    #supports_sane_multi_rowcount = False
-
-    poolclass = pool.SingletonThreadPool
-    statement_compiler = TeradataCompiler
-    ddl_compiler = TeradataDDLCompiler
-    preparer = TeradataIdentifierPreparer
-    execution_ctx_cls = TeradataExecutionContext
-
-    @classmethod
-    def dbapi(cls):
-        import pyodbc as module
-        module.pooling = False
-        return module
-
-    #def last_inserted_ids(self):
+#class TeradataDialect(default.DefaultDialect):
+#    name = 'teradata-sqlalchemy'
+#    driver = 'teradata'
+#    #supports_sane_rowcount = False
+#    #supports_sane_multi_rowcount = False
+#
+#    poolclass = pool.SingletonThreadPool
+#    statement_compiler = TeradataCompiler
+#    ddl_compiler = TeradataDDLCompiler
+#    preparer = TeradataIdentifierPreparer
+#    execution_ctx_cls = TeradataExecutionContext
+#
+#    @classmethod
+#    def dbapi(cls):
+#        import pyodbc as module
+#        module.pooling = False
+#        return module
+#
+#    #def last_inserted_ids(self):
     #    return self.context.last_inserted_ids
 
     #def has_table(self, connection, tablename, schema=None):
