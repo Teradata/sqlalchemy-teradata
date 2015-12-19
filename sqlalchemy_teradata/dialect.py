@@ -17,12 +17,15 @@ class TeradataDialect(default.DefaultDialect):
 
     name = 'tdalchemy'
     driver = 'teradata'
+    default_paramstyle = 'qmark'
 
     poolclass = pool.SingletonThreadPool
     statement_compiler = TeradataCompiler
     ddl_compiler = TeradataDDLCompiler
     preparer = TeradataIdentifierPreparer
     execution_ctx_cls = TeradataExecutionContext
+
+    postfetch_lastrowid = False
 
     def __init__(self, **kwargs):
         super(TeradataDialect, self).__init__(**kwargs)
