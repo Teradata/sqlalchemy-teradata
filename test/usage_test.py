@@ -4,6 +4,8 @@ from sqlalchemy_teradata.dialect import TeradataDialect
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relation, sessionmaker
 
 registry.register("tdalchemy", "sqlalchemy_teradata.dialect", "TeradataDialect")
 
@@ -14,9 +16,14 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
         but with the dialect being developed
     """
 
+    # Note:  this test uses pytest which captures stdout by default, pass -s to disable
+
     def setup(self):
         self.dialect = TeradataDialect()
-        self.engine = create_engine('tdalchemy://<db user>:<db pass>@<hostname:port>/dbc')
+       # add credentials here
+        passw = ""
+        user = ""
+        self.engine = create_engine('teradata://'+user+':'+passw+'@<host>:<port>')
         self.conn = self.engine.connect()
 
         # build a table with columns
@@ -25,14 +32,16 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
                            Column('uid', Integer, primary_key=True),
                            Column('name', String(256)),
                            Column('fullname', String(256)),
-                           tdalchemy_unique_pi='uid'  # optional if we set pk
+                           tdalchemy_set=True
+                           # tdalchemy_unique_pi='uid'  # optional if we set pk
                            )
 
         self.addresses = Table('addresses', self.metadata,
                                Column('id', Integer, primary_key=True),
-                               Column('user_id', None, ForeignKey('my_users.uid')),
+                               Column('user_id', None, ForeignKey('my_users.uid'), nullable=False),
                                Column('email_address', String(256), nullable=False),
-                               tdalchemy_unique_pi='id'  # optional if we set pk
+                               tdalchemy_set=True
+                               # tdalchemy_unique_pi='id'  # optional if we set pk
                                )
 
         self.metadata.create_all(self.engine)
@@ -41,26 +50,24 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
         self.metadata.drop_all(self.engine)
         self.conn.close()
 
-    # pytest captures stdout by default pass -s to disable
     def test_show_state(self):
-        print('setting up state:')
-        for t in self.metadata.sorted_tables:
-            print t
+        assert self.users in self.metadata.sorted_tables
+        assert self.addresses in self.metadata.sorted_tables
 
     def test_inserts(self):
         self.ins = self.users.insert()
 
         # inserts by default require all columns to be provided
-        assert(str(self.ins), 'INSERT INTO my_users (uid, name, fullname) VALUES (:uid, :name, :fullname)')
+        assert(str(self.ins) == 'INSERT INTO my_users (uid, name, fullname) VALUES (:uid, :name, :fullname)')
 
-        # use the VALUES claust to limit the values inserted
+        # use the VALUES clause to limit the values inserted
         self.ins = self.users.insert().values(name='mark', fullname='mark sandan')
 
-        # actually values don't get stored in the string
-        assert(str(self.ins), 'INSERT INTO users (name, fullname) VALUES (:name, :fullname)')
+        # actual values don't get stored in the string
+        assert(str(self.ins) == 'INSERT INTO my_users (name, fullname) VALUES (:name, :fullname)')
 
         # data values are stored in the INSERT but only are used when executed, we can peek
-        assert(str(self.ins.compile().params), str({'fullname': 'mark sandan', 'name': 'mark'}))
+        assert(str(self.ins.compile().params) == str({'fullname': 'mark sandan', 'name': 'mark'}))
 
         # None of the inserts above in this test get added to the database
 
@@ -70,10 +77,11 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
 
         # execute the insert statement
         res = self.conn.execute(self.ins, uid=1, name='jack', fullname='Jack Jones')
+        assert(res.inserted_primary_key == [1])
         res = self.conn.execute(self.ins, uid=2, name='wendy', fullname='Wendy Williams')
+        assert(res.inserted_primary_key == [2])
 
         # the res variable is a ResultProxy object, analagous to DBAPI cursor
-        print str(res.inserted_primary_key)
 
         # issue many inserts, the same is possible for update and delete
         self.conn.execute(self.addresses.insert(), [
@@ -92,40 +100,61 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
         u2 = res.fetchone()
 
         # accessing rows
-        print("name:", u1['name'], " fullname:", u1['fullname'])
-        print("name:", u2['name'], " fullname:", u2['fullname'])
+        assert(u1['name'] == u'jack')
+        assert(u1['fullname'] == u'Jack Jones')
 
-        print("name:", u1[1], " fullname:", u1[2])
-        print("name:", u2[1], " fullname:", u2[2])
+        assert(u2['name'] == u'wendy')
+        assert(u2['fullname'] == u'Wendy Williams')
+
+        assert(u1[1] == u1['name'])
+        assert(u1[2] == u1['fullname'])
+
+        assert(u2[1] == u2['name'])
+        assert(u2[2] == u2['fullname'])
 
         # be sure to close the result set
         res.close()
 
         # use cols to access rows
-        for row in self.conn.execute(s):
-            print("name:", row[self.users.c.name], "; fullname:", row[self.users.c.fullname])
+        res = self.conn.execute(s)
+        u3 = res.fetchone()
+        u4 = res.fetchone()
+
+        assert(u3[self.users.c.name] == u1['name'])
+        assert(u3[self.users.c.fullname] == u1['fullname'])
+
+        assert(u4[self.users.c.name] == u2['name'])
+        assert(u4[self.users.c.fullname] == u2['fullname'])
 
         # reference individual columns in select clause
         s = select([self.users.c.name, self.users.c.fullname])
         res = self.conn.execute(s)
-        for row in res:
-            print(row)
+        u3 = res.fetchone()
+        u4 = res.fetchone()
+
+        assert(u3[self.users.c.name] == u1['name'])
+        assert(u3[self.users.c.fullname] == u1['fullname'])
+
+        assert(u4[self.users.c.name] == u2['name'])
+        assert(u4[self.users.c.fullname] == u2['fullname'])
 
         # test joins
         # cartesian product
-        for row in self.conn.execute(select([self.users, self.addresses])):
-            print(row)
+        usrs = [row for row in self.conn.execute(select([self.users]))]
+        addrs = [row for row in self.conn.execute(select([self.addresses]))]
+        prod = [row for row in self.conn.execute(select([self.users, self.addresses]))]
+        assert(len(prod) == len(usrs) * len(addrs))
 
         # inner join on id
         s = select([self.users, self.addresses]).where(self.users.c.uid == self.addresses.c.user_id)
-        for row in self.conn.execute(s):
-            print(row)
+        inner = [row for row in self.conn.execute(s)]
+        assert(len(inner) == 4)
 
         # operators between columns objects & other col objects/literals
         expr = self.users.c.uid == self.addresses.c.user_id
-        assert('my_users.uid = addresses.user_id', str(expr))
+        assert('my_users.uid = addresses.user_id' == str(expr))
         # see how Teradata concats two strings
-        assert((self.users.c.name + self.users.c.fullname).compile(bind=self.engine),
+        assert(str((self.users.c.name + self.users.c.fullname).compile(bind=self.engine)) ==
                'my_users.name || my_users.fullname')
 
         # built-in conjunctions
@@ -143,14 +172,14 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
                              )
                          )
                      )
-        print(s)
+        # print(s)
         res = self.conn.execute(s)
         for row in res:
-            print(row)
+            assert(str(row[0]) == u'Wendy Williams, wendy@aol.com')
 
         # more joins
         # ON condition auto generated based on ForeignKey
-        assert(self.users.join(self.addresses),
+        assert(str(self.users.join(self.addresses)) ==
                'my_users JOIN addresses ON my_users.uid = addresses.user_id')
 
         # specify the join ON condition
@@ -161,24 +190,24 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
         s = select([self.users.c.fullname]).select_from(
             self.users.join(self.addresses, self.addresses.c.email_address.like(self.users.c.name + '%')))
         res = self.conn.execute(s)
-        assert(len(res.fetchall()), 3)
+        assert(len(res.fetchall()) == 3)
 
         # left outer joins
         s = select([self.users.c.fullname]).select_from(self.users.outerjoin(self.addresses))
         # outer join works with teradata dialect (unlike oracle dialect < version9)
 
-        assert(s, s.compile(dialect=self.dialect))
+        assert(str(s) == str(s.compile(dialect=self.dialect)))
 
         # test bind params (positional)
 
-        from sqlalchemy import text, column
+        from sqlalchemy import text
         s = self.users.select(self.users.c.name.like(
                                 bindparam('username', type_=String)+text("'%'")))
         res = self.conn.execute(s, username='wendy').fetchall()
         assert(len(res), 1)
 
-        # sql functions
-        from sqlalchemy.sql import func
+        # functions
+        from sqlalchemy.sql import func, column
 
         # certain function names are known by sqlalchemy
         assert(str(func.current_timestamp()), 'CURRENT_TIMESTAMP')
@@ -192,12 +221,12 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
         # func result sets, define a function taking params x,y return q,z,r
         # useful for nested queries, subqueries - w/ dynamic params
         calculate = select([column('q'), column('z'), column('r')]).\
-                       select_from(
-                            func.calculate(
-                                bindparam('x'),
-                                bindparam('y')
-                            )
-                        )
+            select_from(
+                         func.calculate(
+                           bindparam('x'),
+                           bindparam('y')
+                         )
+                       )
         calc = calculate.alias()
         s = select([self.users]).where(self.users.c.uid > calc.c.z)
         assert('SELECT my_users.uid, my_users.name, my_users.fullname\
@@ -210,20 +239,75 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
 
         s = select([self.users]).where(self.users.c.uid.between(calc1.c.z, calc2.c.z))
         parms = s.compile().params
-        print(parms)
+
         assert('x_2' in parms, 'x_1' in parms)
         assert('y_2' in parms, 'y_1' in parms)
-        assert(parms['x_1'] == 17,parms['y_1'] == 45)
-        assert(parms['x_2'] == 5,parms['y_2'] == 12)
+        assert(parms['x_1'] == 17, parms['y_1'] == 45)
+        assert(parms['x_2'] == 5, parms['y_2'] == 12)
 
-        ## test union and except
+        # order by asc
+        stmt = select([self.users.c.name]).order_by(self.users.c.name)
+        res = self.conn.execute(stmt).fetchall()
+
+        assert('jack' == res[0][0])
+        assert('wendy' == res[1][0])
+
+        # order by desc
+        stmt = select([self.users.c.name]).order_by(self.users.c.name.desc())
+        res = self.conn.execute(stmt).fetchall()
+
+        assert('wendy' == res[0][0])
+        assert('jack' == res[1][0])
+
+        # group by
+        stmt = select([self.users.c.name, func.count(self.addresses.c.id)]).\
+            select_from(self.users.join(self.addresses)).\
+            group_by(self.users.c.name)
+
+        res = self.conn.execute(stmt).fetchall()
+
+        assert(res[0][0] == 'jack')
+        assert(res[1][0] == 'wendy')
+        assert(res[0][1] == res[1][1])
+
+        # group by having
+        stmt = select([self.users.c.name, func.count(self.addresses.c.id)]).\
+            select_from(self.users.join(self.addresses)).\
+            group_by(self.users.c.name).\
+            having(func.length(self.users.c.name) > 4)
+
+        res = self.conn.execute(stmt).fetchall()
+
+        assert(res[0] == ('wendy', 2))
+
+        # distinct
+        stmt = select([self.users.c.name]).\
+            where(self.addresses.c.email_address.contains(self.users.c.name)).distinct()
+
+        res = self.conn.execute(stmt).fetchall()
+
+        assert(len(res) == 2)
+        assert(res[0][0] != res[1][0])
+
+        # limit
+        stmt = select([self.users.c.name, self.addresses.c.email_address]).\
+            select_from(self.users.join(self.addresses)).\
+            limit(1)
+
+        res = self.conn.execute(stmt).fetchall()
+
+        assert(len(res) == 1)
+
+        # offset
+
+        # test union and except
         from sqlalchemy.sql import except_, union
 
         u = union(
             self.addresses.select().where(self.addresses.c.email_address == 'foo@bar.com'),
             self.addresses.select().where(self.addresses.c.email_address.like('%@yahoo.com')),)# .order_by(self.addresses.c.email_address)
-        print(u)
-        #res = self.conn.execute(u) this fails, syntax error order by expects pos integer?
+        # print(u)
+        # #res = self.conn.execute(u) this fails, syntax error order by expects pos integer?
 
         u = except_(
               self.addresses.select().where(self.addresses.c.email_address.like('%@%.com')),
@@ -235,21 +319,28 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
                union(
                   self.addresses.select().where(self.addresses.c.email_address.like('%@yahoo.com')),
                   self.addresses.select().where(self.addresses.c.email_address.like('%@msn.com'))
-              ).alias().select(),
-              self.addresses.select(self.addresses.c.email_address.like('%@msn.com'))
+               ).alias().select(), self.addresses.select(self.addresses.c.email_address.like('%@msn.com'))
         )
-
 
         res = self.conn.execute(u).fetchall()
         assert(1, len(res))
 
-        ## scalar subqueries
+        # scalar subqueries
         stmt = select([func.count(self.addresses.c.id)]).where(self.users.c.uid == self.addresses.c.user_id).as_scalar()
 
         # we can place stmt as any other column within another select
         res = self.conn.execute(select([self.users.c.name, stmt])).fetchall()
-        print(res)
+
+        # res is a list of tuples, one tuple per user's name
         assert(2, len(res))
+
+        u1 = res[0]
+        u2 = res[1]
+
+        assert(len(u1) == len(u2))
+        assert(u1[0] == u'jack')
+        assert(u1[1] == u2[1])
+        assert(u2[0] == u'wendy')
 
         # we can label the inner query
         stmt = select([func.count(self.addresses.c.id)]).\
@@ -257,59 +348,73 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
             label("address_count")
 
         res = self.conn.execute(select([self.users.c.name, stmt])).fetchall()
-        print(res)
         assert(2, len(res))
 
+        u1 = res[0]
+        u2 = res[1]
 
-        ## inserts, updates, deletes
-        stmt = self.users.update().values(fullname="Fullname: " +self.users.c.name)
+        assert(len(u1) == 2)
+        assert(len(u2) == 2)
+
+        # inserts, updates, deletes
+        stmt = self.users.update().values(fullname="Fullname: " + self.users.c.name)
         res = self.conn.execute(stmt)
+
+        assert('name_1' in res.last_updated_params())
+        assert(res.last_updated_params()['name_1'] == 'Fullname: ')
 
         stmt = self.users.insert().values(name=bindparam('_name') + " .. name")
-        res = self.conn.execute(stmt, [ {'uid':4, '_name':'name1'},
-                                        {'uid':5, '_name':'name2'},
-                                        {'uid':6, '_name':'name3'},])
-        print(res)
+        res = self.conn.execute(stmt, [{'uid': 4, '_name': 'name1'}, {'uid': 5, '_name': 'name2'}, {'uid': 6, '_name': 'name3'}, ])
 
         # updates
-        stmt = self.users.update().where(self.users.c.name == 'jack').values(name = 'ed')
+        stmt = self.users.update().where(self.users.c.name == 'jack').values(name='ed')
         res = self.conn.execute(stmt)
-        print(res)
+
+        assert(res.rowcount == 1)
+        assert(res.returns_rows is False)
 
         # update many with bound params
         stmt = self.users.update().where(self.users.c.name == bindparam('oldname')).\
-               values(name=bindparam('newname'))
+            values(name=bindparam('newname'))
         res = self.conn.execute(stmt, [
-                   {'oldname':'jack', 'newname':'ed'},
-                   {'oldname':'wendy', 'newname':'mary'},
-                   {'oldname':'jim', 'newname':'jake'},
+                   {'oldname': 'jack', 'newname': 'ed'},
+                   {'oldname': 'wendy', 'newname': 'mary'},
         ])
+
+        assert(res.returns_rows is False)
+        assert(res.rowcount == 1)
+
+        res = self.conn.execute(select([self.users]).where(self.users.c.name == 'ed'))
+        r = res.fetchone()
+        assert(r['name'] == 'ed')
 
         # correlated updates
         stmt = select([self.addresses.c.email_address]).\
-                   where(self.addresses.c.user_id == self.users.c.uid).\
-                   limit(1)
+            where(self.addresses.c.user_id == self.users.c.uid).\
+            limit(1)
         # this fails, syntax error bc of LIMIT - need TOP/SAMPLE instead
-        #res = self.conn.execute(self.users.update().values(fullname=stmt))
+        # Note: TOP can't be in a subquery
+        # res = self.conn.execute(self.users.update().values(fullname=stmt))
 
         # multiple table updates
         stmt = self.users.update().\
-               values(name='ed wood').\
-               where(self.users.c.uid == self.addresses.c.id).\
-               where(self.addresses.c.email_address.startswith('ed%'))
+            values(name='ed wood').\
+            where(self.users.c.uid == self.addresses.c.id).\
+            where(self.addresses.c.email_address.startswith('ed%'))
 
         # this fails, teradata does update from set where not update set from where
-        #res = self.conn.execute(stmt)
+        # #res = self.conn.execute(stmt)
 
         stmt = self.users.update().\
-                 values({
-                     self.users.c.name:'ed wood',
-                     self.addresses.c.email_address:'ed.wood@foo.com'
-                 }).\
-                 where(self.users.c.uid == self.addresses.c.id).\
-                 where(self.addresses.c.email_address.startswith('ed%'))
+            values({
+               self.users.c.name: 'ed wood',
+               self.addresses.c.email_address: 'ed.wood@foo.com'
+            }).\
+            where(self.users.c.uid == self.addresses.c.id).\
+            where(self.addresses.c.email_address.startswith('ed%'))
+
         # fails but works on MySQL, should this work for us?
-        #res = self.conn.execute(stmt)
+        # #res = self.conn.execute(stmt)
 
         # deletes
         self.conn.execute(self.addresses.delete())
@@ -318,4 +423,4 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
         # matched row counts
         # updates + deletes have a number indicating # rows matched by WHERE clause
         res = self.conn.execute(self.users.delete())
-        assert(res.rowcount, 1)
+        assert(res.rowcount == 1)
