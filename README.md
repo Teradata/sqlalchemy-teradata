@@ -37,6 +37,6 @@ see the [pytest docs](http://pytest.org/latest/contents.html#toc) for more info
 See Also
 ========
 
-[PyTd](https://github.com/Teradata/PyTd): the DB API 2.0 implementation found in the teradata module
-[sqlalchemy_aster](https://github.com/KarolTx/sqlalchemy_aster): A SQLAlchemy dialect for aster
+* [PyTd](https://github.com/Teradata/PyTd): the DB API 2.0 implementation found in the teradata module
+* [sqlalchemy_aster](https://github.com/KarolTx/sqlalchemy_aster): A SQLAlchemy dialect for aster
 
