@@ -1,5 +1,5 @@
- Dialect for SQLAlchemy
- ===============================
+Dialect for SQLAlchemy
+===============================
 
  SQLAlchemy is a database toolkit that provides an abstraction over databases. It allows you to interact with relational databases using an object relational mapper or through a pythonic sql rendering engine known as the core. 
 
