@@ -58,13 +58,12 @@ class TeradataDialect(default.DefaultDialect):
     def create_connect_args(self, url):
       if url is not None:
         params = super(TeradataDialect, self).create_connect_args(url)[1]
-        return (
-                ("Teradata",
-                        params['host'],
-                        params['username'],
-                        params['password']),
-                {})
-
+        cargs = ("Teradata", params['host'], params['username'], params['password'])
+        cparams = {param:params[param] for param in params if param not in\
+                                ['host', 'username', 'password']}
+                                
+        return (cargs, cparams)
+        
     @classmethod
     def dbapi(cls):
         """ Hook to the dbapi2.0 implementation's module"""
