@@ -25,7 +25,7 @@ ReservedWords = set(["abort", "abortsession", "abs", "access_lock", "account",
                      "binary", "blob", "both", "bt", "but", "by", "byte", "byteint",
                      "bytes", "call", "case", "case_n", "casespecific", "cast", "cd",
                      "char", "char_length", "char2hexint","count", "title", "value",
-                     'user','password',"year", "match"])
+                     'user','password',"year", "match", "timestamp"])
 
 class TeradataExecutionContext(default.DefaultExecutionContext):
 
