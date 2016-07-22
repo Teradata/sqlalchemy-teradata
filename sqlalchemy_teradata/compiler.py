@@ -28,7 +28,7 @@ class TeradataCompiler(compiler.SQLCompiler):
             return s
         return compiler.SQLCompiler.get_select_precolumns(self, select)
 
-    def limit_clause(self, select):
+    def limit_clause(self, select, **kwargs):
         """Limit after SELECT"""
         return ""
 
