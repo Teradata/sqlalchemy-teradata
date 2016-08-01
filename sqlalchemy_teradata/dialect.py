@@ -97,9 +97,9 @@ class TeradataDialect(default.DefaultDialect):
 
         stmt = select([column('tablename')],
                       from_obj=[text('dbc.TablesVX')]).where(
-                        and_(text('DatabaseName = :schema'),
-                             or_(text('tablekind=\'T\''),
-                                 text('tablekind=\'O\''))))
+                      and_(text('DatabaseName = :schema'),
+                          or_(text('tablekind=\'T\''),
+                              text('tablekind=\'O\''))))
         res = connection.execute(stmt, schema=schema).fetchall()
         return [self.normalize_name(name['tablename']) for name in res]
 
@@ -111,9 +111,15 @@ class TeradataDialect(default.DefaultDialect):
         return [self.normalize_name(name['tablename']) for name in res]
 
     def get_view_names(self, connection, schema=None, **kw):
-        stmt = select(['tablename'],
-               from_obj=[text('dbc.TablesVX')],
-               whereclause='tablekind=\'V\'')
+
+        if schema is None:
+            schema = self.default_schema_name
+
+        stmt = select([column('tablename')],
+                      from_obj=[text('dbc.TablesVX')]).where(
+                      and_(text('DatabaseName = :schema'),
+                           text('tablekind=\'V\'')))
+        
         res = connection.execute(stmt).fetchall()
         return [self.normalize_name(name['tablename']) for name in res]
 
