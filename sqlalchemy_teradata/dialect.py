@@ -167,8 +167,6 @@ class TeradataDialect(default.DefaultDialect):
         res = connection.execute(stmt, schema=schema, table=table_name).fetchall()
 
         def grouper(fk_row):
-            print fk_row
-            print fk_row.keys()
             return {
                 'name': fk_row.IndexName or fk_row.IndexID, #ID if IndexName is None
                 'schema': fk_row.ParentDB,
