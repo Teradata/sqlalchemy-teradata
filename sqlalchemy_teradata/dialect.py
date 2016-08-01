@@ -148,6 +148,41 @@ class TeradataDialect(default.DefaultDialect):
             "name": index_name
         }
 
+    def get_unique_constraints(self, connection, table_name, schema=None, **kw):
+        """
+        Overrides base class method
+        """
+        if schema is None:
+            schema = self.default_schema_name
+
+        stmt = select([column('ColumnName'), column('IndexName')], from_obj=[text('dbc.Indices')]) \
+            .where(and_(text('DatabaseName = :schema'),
+                        text('TableName=:table'),
+                        text('IndexType=:indextype'))) \
+            .order_by(asc(column('IndexName')))
+
+        # U for Unique
+        res = connection.execute(stmt, schema=schema, table=table_name, indextype='U').fetchall()
+
+        def grouper(fk_row):
+            return {
+                'name': fk_row.IndexName,
+            }
+
+        unique_constraints = list()
+        for constraint_info, constraint_cols in res:
+            unique_constraint = {
+                'name': constraint_info['name'],
+                'column_names': list()
+            }
+
+            for constraint_col in constraint_cols:
+                unique_constraint['column_names'].append(constraint_col.ColumnName)
+
+            unique_constraints.append(unique_constraint)
+
+        return unique_constraints
+
     def get_foreign_keys(self, connection, table_name, schema=None, **kw):
         """
         Overrides base class method
@@ -191,6 +226,44 @@ class TeradataDialect(default.DefaultDialect):
             fk_dicts.append(fk_dict)
 
         return fk_dicts
+
+    def get_indexes(self, connection, table_name, schema=None, **kw):
+        """
+        Overrides base class method
+        """
+        from itertools import groupby
+
+        if schema is None:
+            schema = self.default_schema_name
+
+        stmt = select(["*"], from_obj=[text('dbc.Indices')]) \
+            .where(and_(text('DatabaseName = :schema'),
+                        text('TableName=:table'))) \
+            .order_by(asc(column('IndexName')))
+
+        res = connection.execute(stmt, schema=schema, table=table_name).fetchall()
+
+        def grouper(fk_row):
+            return {
+                'name': fk_row.IndexName or fk_row.IndexNumber, # If IndexName is None TODO: Check what to do
+                'unique': True if fk_row.UniqueFlag == 'Y' else False
+            }
+
+        # TODO: Check if there's a better way
+        indices = list()
+        for index_info, index_cols in groupby(res, grouper):
+            index_dict = {
+                'name': index_info['name'],
+                'column_names': list(),
+                'unique': index_info['unique']
+            }
+
+            for index_col in index_cols:
+                index_dict['column_names'].append(index_col.ColumnName)
+
+            indices.append(index_dict)
+
+        return indices
 
 
 dialect = TeradataDialect
