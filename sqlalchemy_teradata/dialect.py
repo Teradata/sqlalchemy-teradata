@@ -138,6 +138,7 @@ class TeradataDialect(default.DefaultDialect):
 
         index_columns = list()
         index_name = None
+
         for index_column in res:
             index_columns.append(index_column)
             index_name = index_column.IndexName # There should be just one IndexName
@@ -146,6 +147,52 @@ class TeradataDialect(default.DefaultDialect):
             "constrained_columns": index_columns,
             "name": index_name
         }
+
+    def get_foreign_keys(self, connection, table_name, schema=None, **kw):
+        """
+        Overrides base class method
+        """
+        from itertools import groupby
+
+        if schema is None:
+            schema = self.default_schema_name
+
+        stmt = select([column('IndexID'), column('IndexName'), column('ChildKeyColumn'), column('ParentDB'),
+                       column('ParentTable'), column('ParentKeyColumn')],
+                      from_obj=[text('DBC.All_RI_ChildrenV')]) \
+            .where(and_(text('ChildTable = :table'),
+                        text('ChildDB = :schema'))) \
+            .order_by(asc(column('IndexID')))
+
+        res = connection.execute(stmt, schema=schema, table=table_name).fetchall()
+
+        def grouper(fk_row):
+            print fk_row
+            print fk_row.keys()
+            return {
+                'name': fk_row.IndexName or fk_row.IndexID, #ID if IndexName is None
+                'schema': fk_row.ParentDB,
+                'table': fk_row.ParentTable
+            }
+
+        # TODO: Check if there's a better way
+        fk_dicts = list()
+        for constraint_info, constraint_cols in groupby(res, grouper):
+            fk_dict = {
+                'name': constraint_info['name'],
+                'constrained_columns': list(),
+                'referred_table': constraint_info['table'],
+                'referred_schema': constraint_info['schema'],
+                'referred_columns': list()
+            }
+
+            for constraint_col in constraint_cols:
+                fk_dict['constrained_columns'].append(constraint_col.ChildKeyColumn)
+                fk_dict['referred_columns'].append(constraint_col.ParentKeyColumn)
+
+            fk_dicts.append(fk_dict)
+
+        return fk_dicts
 
 
 dialect = TeradataDialect
