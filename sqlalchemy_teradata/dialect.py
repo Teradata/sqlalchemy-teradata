@@ -11,7 +11,7 @@ from sqlalchemy.sql import select, and_, or_
 from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler,\
                                          TeradataTypeCompiler
 from sqlalchemy_teradata.base import TeradataIdentifierPreparer, TeradataExecutionContext
-from sqlalchemy.sql.expression import text, table, column
+from sqlalchemy.sql.expression import text, table, column, asc
 from sqlalchemy import Table, Column, Index
 
 class TeradataDialect(default.DefaultDialect):
@@ -115,5 +115,37 @@ class TeradataDialect(default.DefaultDialect):
                whereclause='tablekind=\'V\'')
         res = connection.execute(stmt).fetchall()
         return [self.normalize_name(name['tablename']) for name in res]
+
+    def get_pk_constraint(self, connection, table_name, schema=None, **kw):
+        """
+        Override
+        TODO: Check if we need PRIMARY Indices or PRIMARY KEY Indices
+        TODO: Check for border cases (No PK Indices)
+        """
+
+        if schema is None:
+            schema = self.default_schema_name
+
+        stmt = select([column('ColumnName'), column('IndexName')],
+                      from_obj=[text('dbc.Indices')]).where(
+                          and_(text('DatabaseName = :schema'),
+                              text('TableName=:table'),
+                              text('IndexType=:indextype'))
+                      ).order_by(asc(column('IndexNumber')))
+
+        # K for Primary Key
+        res = connection.execute(stmt, schema=schema, table=table_name, indextype='K').fetchall()
+
+        index_columns = list()
+        index_name = None
+        for index_column in res:
+            index_columns.append(index_column)
+            index_name = index_column.IndexName # There should be just one IndexName
+
+        return {
+            "constrained_columns": index_columns,
+            "name": index_name
+        }
+
 
 dialect = TeradataDialect
