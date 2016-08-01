@@ -83,7 +83,7 @@ class TeradataDialect(default.DefaultDialect):
                         and_(text('DatabaseName=:schema'),
                              text('TableName=:table_name')))
 
-        res = connection.execute(stmt, schema=schema, name=table_name).fetchone()
+        res = connection.execute(stmt, schema=schema, table_name=table_name).fetchone()
         return res is not None
 
     def _get_default_schema_name(self, connection):
@@ -119,8 +119,8 @@ class TeradataDialect(default.DefaultDialect):
                       from_obj=[text('dbc.TablesVX')]).where(
                       and_(text('DatabaseName = :schema'),
                            text('tablekind=\'V\'')))
-        
-        res = connection.execute(stmt).fetchall()
+
+        res = connection.execute(stmt, schema=schema).fetchall()
         return [self.normalize_name(name['tablename']) for name in res]
 
 dialect = TeradataDialect
