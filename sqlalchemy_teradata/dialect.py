@@ -80,9 +80,10 @@ class TeradataDialect(default.DefaultDialect):
 
         stmt = select([column('tablename')],
                       from_obj=[text('dbc.tablesvx')]).where(
-                          and_(text('creatorname=:user'),
-                               text('tablename=:name')))
-        res = connection.execute(stmt, user=schema, name=table_name).fetchone()
+                        and_(text('DatabaseName=:schema'),
+                             text('TableName=:table_name')))
+
+        res = connection.execute(stmt, schema=schema, name=table_name).fetchone()
         return res is not None
 
     def _get_default_schema_name(self, connection):
