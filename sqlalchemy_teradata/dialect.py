@@ -96,11 +96,11 @@ class TeradataDialect(default.DefaultDialect):
             schema = self.default_schema_name
 
         stmt = select([column('tablename')],
-                from_obj = [text('dbc.TablesVX')]).where(
-                and_(text('creatorname = :user'),
-                    or_(text('tablekind=\'T\''),
-                        text('tablekind=\'O\''))))
-        res = connection.execute(stmt, user=schema).fetchall()
+                      from_obj=[text('dbc.TablesVX')]).where(
+                        and_(text('DatabaseName = :schema'),
+                             or_(text('tablekind=\'T\''),
+                                 text('tablekind=\'O\''))))
+        res = connection.execute(stmt, schema=schema).fetchall()
         return [self.normalize_name(name['tablename']) for name in res]
 
     def get_schema_names(self, connection, **kw):
