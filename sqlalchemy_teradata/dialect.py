@@ -80,9 +80,10 @@ class TeradataDialect(default.DefaultDialect):
 
         stmt = select([column('tablename')],
                       from_obj=[text('dbc.tablesvx')]).where(
-                          and_(text('creatorname=:user'),
-                               text('tablename=:name')))
-        res = connection.execute(stmt, user=schema, name=table_name).fetchone()
+                        and_(text('DatabaseName=:schema'),
+                             text('TableName=:table_name')))
+
+        res = connection.execute(stmt, schema=schema, table_name=table_name).fetchone()
         return res is not None
 
     def _get_default_schema_name(self, connection):
@@ -95,11 +96,11 @@ class TeradataDialect(default.DefaultDialect):
             schema = self.default_schema_name
 
         stmt = select([column('tablename')],
-                from_obj = [text('dbc.TablesVX')]).where(
-                and_(text('creatorname = :user'),
-                    or_(text('tablekind=\'T\''),
-                        text('tablekind=\'O\''))))
-        res = connection.execute(stmt, user=schema).fetchall()
+                      from_obj=[text('dbc.TablesVX')]).where(
+                      and_(text('DatabaseName = :schema'),
+                          or_(text('tablekind=\'T\''),
+                              text('tablekind=\'O\''))))
+        res = connection.execute(stmt, schema=schema).fetchall()
         return [self.normalize_name(name['tablename']) for name in res]
 
     def get_schema_names(self, connection, **kw):
@@ -110,10 +111,16 @@ class TeradataDialect(default.DefaultDialect):
         return [self.normalize_name(name['tablename']) for name in res]
 
     def get_view_names(self, connection, schema=None, **kw):
-        stmt = select(['tablename'],
-               from_obj=[text('dbc.TablesVX')],
-               whereclause='tablekind=\'V\'')
-        res = connection.execute(stmt).fetchall()
+
+        if schema is None:
+            schema = self.default_schema_name
+
+        stmt = select([column('tablename')],
+                      from_obj=[text('dbc.TablesVX')]).where(
+                      and_(text('DatabaseName = :schema'),
+                           text('tablekind=\'V\'')))
+
+        res = connection.execute(stmt, schema=schema).fetchall()
         return [self.normalize_name(name['tablename']) for name in res]
 
 dialect = TeradataDialect
