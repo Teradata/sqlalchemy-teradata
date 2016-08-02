@@ -14,6 +14,14 @@ Design Principles
     * Provide a simple core that is modular and extensible
     * Be an easy way to interact with the database out of the box
 
+
+Quick Start
+===========
+Install SQLAlchemy:
+    * `sudo pip install sqlalchemy-teradata`
+Setup the connect url to point to the database. See the [example](https://github.com/Teradata/sqlalchemy-teradata/wiki/Examples#create-an-engine) in the wiki.
+
+
 Get Involved
 ============
 
