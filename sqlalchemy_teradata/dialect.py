@@ -170,7 +170,7 @@ class TeradataDialect(default.DefaultDialect):
             }
 
         unique_constraints = list()
-        for constraint_info, constraint_cols in res:
+        for constraint_info, constraint_cols in groupby(res, grouper):
             unique_constraint = {
                 'name': constraint_info['name'],
                 'column_names': list()
