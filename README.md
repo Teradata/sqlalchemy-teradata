@@ -22,7 +22,7 @@ Install the sqlalchemy-teradata library:
     [sudo] pip install sqlalchemy-teradata
 
 
-Setup the connect url to point to the database. See the [example](https://github.com/Teradata/sqlalchemy-teradata/wiki/Examples#create-an-engine) in the wiki.
+Setup the connect url to point to the database. See the [example](https://github.com/Teradata/sqlalchemy-teradata/wiki/Examples#creating-an-engine) in the wiki.
 
 
 Get Involved
