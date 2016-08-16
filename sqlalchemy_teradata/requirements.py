@@ -48,6 +48,3 @@ class Requirements(SuiteRequirements):
         """
         return exclusions.closed()
 
-    @property
-    def table_reflection(self):
-        return exclusions.closed()

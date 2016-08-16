@@ -47,14 +47,46 @@ Get Involved
 Tests
 =====
 
-The project uses pytest. You can run pytest in the sqlalchemy-teradata
-directory with the ``py.test``\ command. Typical usage:
+The dialect is tested using the pytest plugin. You can run pytest in the sqlalchemy-teradata
+directory with the ``py.test``\ command. By default the tests are run against the database
+URI specified in ``setup.cfg`` under the ``[db]`` heading.
+
+You can override the dburi you would like the tests to run against:
 
 .. code:: python
 
+    py.test --dburi:teradata://user:pw@host
+
+To view the databases aliased in setup.cfg:
+
+.. code:: python
+
+    py.test --dbs all
+
+To run the tests against an aliased database URI in setup.cfg:
+
+.. code:: python
+
+    py.test --db default
+    py.test --db teradata
+
+If the --db flag nor the --dburi flag are specified when running py.test,
+the database uri specified as ``default`` in setup.cfg is used.
+
+Typical usage:
+
+.. code:: python
+
+    # test all the things (against default)!
     py.test -s test/*
+
+    # run tests in this file
     py.test -s test/test_suite.py
+
+    # run TestClass in the the file
     py.test -s test/test_suite.py::TestClass
+
+    # just run a specific method in TestClass
     py.test -s test/test_suite.py::TestClass::test_func
 
 see the `pytest docs`_ for more info

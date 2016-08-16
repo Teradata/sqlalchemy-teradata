@@ -6,9 +6,7 @@ from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relation, sessionmaker
-
-registry.register("tdalchemy", "sqlalchemy_teradata.dialect", "TeradataDialect")
-
+from sqlalchemy import testing
 
 class DialectSQLAlchUsageTest(fixtures.TestBase):
     """ This usage test is meant to serve as documentation and follows the
@@ -16,15 +14,13 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
         but with the dialect being developed
     """
 
-    # Note:  this test uses pytest which captures stdout by default, pass -s to disable
+    # Note: this test uses pytest which captures stdout by default, pass -s to allow output to stdout
 
-    def setup(self):
+    def setUp(self):
+
         self.dialect = TeradataDialect()
-       # add credentials here
-        passw = ""
-        user = ""
-        self.engine = create_engine('teradata://'+user+':'+passw+'@<host>:<port>')
-        self.conn = self.engine.connect()
+        self.conn = testing.db.connect()
+        self.engine = self.conn.engine
 
         # build a table with columns
         self.metadata = MetaData()
@@ -32,16 +28,12 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
                            Column('uid', Integer, primary_key=True),
                            Column('name', String(256)),
                            Column('fullname', String(256)),
-                           tdalchemy_set=True
-                           # tdalchemy_unique_pi='uid'  # optional if we set pk
                            )
 
         self.addresses = Table('addresses', self.metadata,
                                Column('id', Integer, primary_key=True),
                                Column('user_id', None, ForeignKey('my_users.uid'), nullable=False),
                                Column('email_address', String(256), nullable=False),
-                               tdalchemy_set=True
-                               # tdalchemy_unique_pi='id'  # optional if we set pk
                                )
 
         self.metadata.create_all(self.engine)
