@@ -44,6 +44,8 @@ Get Involved
     * You can contribute to our documentation by going to our github wiki.
     * All code submissions are done through pull requests.
 
+We have a room in `gitter`_. It is still based off of the old repo but it will do.
+
 Tests
 =====
 
@@ -97,6 +99,7 @@ See Also
 -  `PyTd`_: the DB API 2.0 implementation found in the teradata module
 -  `sqlalchemy\_aster`_: A SQLAlchemy dialect for aster
 
+.. _gitter: https://gitter.im/sandan/sqlalchemy-teradata
 .. _example: https://github.com/Teradata/sqlalchemy-teradata/wiki/Examples#creating-an-engine
 .. _pytest docs: http://pytest.org/latest/contents.html#toc
 .. _PyTd: https://github.com/Teradata/PyTd
