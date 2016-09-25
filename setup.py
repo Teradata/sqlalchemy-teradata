@@ -17,7 +17,7 @@ setup(
     keywords='Teradata SQLAlchemy',
     author='Mark Sandan',
     author_email='mark.sandan@teradata.com',
-    license='Commercial/Private',
+    license='MIT',
     packages=['sqlalchemy_teradata'],
     include_package_data=True,
     tests_require=['pytest >= 2.5.2'],
