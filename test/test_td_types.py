@@ -4,7 +4,8 @@ from sqlalchemy_teradata.types import ( IntervalYear, IntervalYearToMonth, Inter
                                   IntervalDay, IntervalDayToHour, IntervalDayToMinute,
                                   IntervalDayToSecond, IntervalHour, IntervalHourToMinute,
                                   IntervalHourToSecond, IntervalMinute, IntervalMinuteToSecond,
-                                  IntervalSecond)
+                                  IntervalSecond,
+                                  BYTEINT)
 
 from sqlalchemy.testing import fixtures
 
@@ -33,6 +34,8 @@ class TestCompileTDInterval(fixtures.TestBase):
     assert self.comp.process(IntervalMinute()) == 'INTERVAL MINUTE'
     assert self.comp.process(IntervalMinuteToSecond()) == 'INTERVAL MINUTE TO SECOND'
     assert self.comp.process(IntervalSecond()) == 'INTERVAL SECOND'
+
+    assert self.comp.process(BYTEINT()) == 'BYTEINT'
 
    def test_interval(self):
 

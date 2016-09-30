@@ -7,6 +7,13 @@
 
 from sqlalchemy.sql import sqltypes
 
+class BYTEINT(sqltypes.Integer):
+    """
+    Teradata BYTEINT type.
+    This type represents a one byte signed integer.
+    """
+    __visit_name__ = 'BYTEINT'
+
 class DECIMAL(sqltypes.DECIMAL):
 
     """ Teradata Decimal/Numeric type """
@@ -292,7 +299,7 @@ class IntervalSecond(_TDInterval, sqltypes.Interval):
         frac_precision: fractional_seconds_precision ranging from 0 to 6
 
        """
-       return super(IntervalSecond, self).__init__(precision=precision, 
+       return super(IntervalSecond, self).__init__(precision=precision,
                                                   frac_precision=frac_precision, **kwargs)
 
 class CHAR(sqltypes.CHAR):
@@ -327,7 +334,7 @@ class VARCHAR(sqltypes.String):
 
         """Construct a Varchar
 
-        :param length: Optional 0 to n. If None, it LONG is used
+        :param length: Optional 0 to n. If None, LONG is used
         (the longest permissible variable length character string)
 
         :param charset: optional character set for varchar.

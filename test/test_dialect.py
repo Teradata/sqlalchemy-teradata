@@ -58,7 +58,6 @@ class TeradataDialectTest(fixtures.TestBase):
 
     def test_get_pk_constraint(self):
         cons = self.dialect.get_pk_constraint(self.conn, self.test_table, self.db_schema)
-        print(cons)
         assert type(cons) is dict
         assert self.dialect.normalize_name(cons['name']) == 'my_pk'
         for x in cons['constrained_columns']:
