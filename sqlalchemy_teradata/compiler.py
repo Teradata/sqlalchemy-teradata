@@ -644,7 +644,7 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
        pass
 
    def visit_BOOLEAN(self, type_, **kw):
-       return visit_BYTEINT(type_, **kw)
+       return self.visit_BYTEINT(type_, **kw)
 
    def visit_BYTEINT(self, type_, **kw):
        return 'BYTEINT'

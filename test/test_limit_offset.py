@@ -1,5 +1,6 @@
 from sqlalchemy_teradata.compiler import TeradataTypeCompiler as tdtc
 from sqlalchemy_teradata.dialect import TeradataDialect as tdd
+from sqlalchemy import create_engine, testing
 from sqlalchemy.testing import fixtures
 from sqlalchemy.sql import table, column, select
 
@@ -10,7 +11,8 @@ class TestCompileTDLimitOffset(fixtures.TestBase):
     def setup(self):
         # Running this locally for now
         def dump(sql, *multiparams, **params):
-            sql.compile(dialect=engine.dialect)
+            sql.compile(dialect = self.engine.tdd)
+
         self.engine = create_engine('teradata://', strategy='mock', executor=dump)
 
     def test_limit_offset(self):
@@ -29,5 +31,5 @@ class TestCompileTDLimitOffset(fixtures.TestBase):
         #assert s ==
         s = select([t1]).order_by(t1.c.c2).limit(3)
         #assert s ==
-        stmt = s.compile(engine)
+        stmt = s.compile(self.engine)
 

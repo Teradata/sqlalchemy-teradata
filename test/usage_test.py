@@ -258,8 +258,8 @@ class DialectSQLAlchUsageTest(fixtures.TestBase):
 
         res = self.conn.execute(stmt).fetchall()
 
-        assert(res[0][0] == 'jack')
-        assert(res[1][0] == 'wendy')
+        assert(res[1][0] == 'jack')
+        assert(res[0][0] == 'wendy')
         assert(res[0][1] == res[1][1])
 
         # group by having
