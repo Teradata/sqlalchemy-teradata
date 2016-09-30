@@ -11,25 +11,76 @@ from sqlalchemy import schema as sa_schema
 from sqlalchemy.types import Unicode
 
 
+
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.expression import Select
+from sqlalchemy import exc, sql
+from sqlalchemy import create_engine
+
+
+@compiles(Select, 'teradata')
+def compile_select(element, compiler, **kw):
+    """
+    """
+
+    if not getattr(element, '_window_visit', None):
+      if element._limit is not None or element._offset is not None:
+          limit, offset = element._limit, element._offset
+
+          orderby=compiler.process(element._order_by_clause)
+          if orderby:
+            element = element._generate()
+            element._window_visit=True
+            #element._limit = None
+            #element._offset = None  cant set to none...
+
+            # add a ROW NUMBER() OVER(ORDER BY) column
+            element = element.column(sql.literal_column('ROW NUMBER() OVER (ORDER BY %s)' % orderby).label('rownum')).order_by(None)
+
+            # wrap into a subquery
+            limitselect = sql.select([c for c in element.alias().c if c.key != 'rownum'])
+
+            limitselect._window_visit=True
+            limitselect._is_wrapper=True
+
+            if offset is not None:
+              limitselect.append_whereclause(sql.column('rownum') > offset)
+              if limit is not None:
+                  limitselect.append_whereclause(sql.column('rownum') <= (limit + offset))
+            else:
+              limitselect.append_whereclause(sql.column("rownum") <= limit)
+
+            element = limitselect
+
+    kw['iswrapper'] = getattr(element, '_is_wrapper', False)
+    return compiler.visit_select(element, **kw)
+
 class TeradataCompiler(compiler.SQLCompiler):
 
     def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
         super(TeradataCompiler, self).__init__(dialect, statement, column_keys, inline, **kwargs)
 
     def get_select_precolumns(self, select, **kwargs):
-        """Teradata uses TOP instead of LIMIT """
+        """
+        handles the part of the select statement before the columns are specified.
+        Note: Teradata does not allow a 'distinct' to be specified when 'top' is
+              used in the same select statement.
 
-        if select._distinct or select._limit is not None:
-            s = select._distinct and "DISTINCT " or ""
-            if select._limit is not None:
-                s += "TOP %d " % (select._limit)
-            if select._offset is not None:
-                raise exc.InvalidRequestError('Teradata does not support LIMIT with an offset')
-            return s
-        return compiler.SQLCompiler.get_select_precolumns(self, select)
+              Instead if a user specifies both in the same select clause,
+              the DISTINCT will be used with a ROW_NUMBER OVER(ORDER BY) subquery.
+        """
+
+        pre = select._distinct and "DISTINCT " or ""
+
+        #TODO: decide whether we can replace this with the recipe...
+        if (select._limit and select._offset is None):
+            pre+= "TOP %d " % (select._limit)
+
+
+        return pre
 
     def limit_clause(self, select, **kwargs):
-        """Limit after SELECT"""
+        """Limit after SELECT is implemented in get_select_precolumns"""
         return ""
 
 class TeradataDDLCompiler(compiler.DDLCompiler):
@@ -593,4 +644,7 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
        pass
 
    def visit_BOOLEAN(self, type_, **kw):
+       return visit_BYTEINT(type_, **kw)
+
+   def visit_BYTEINT(self, type_, **kw):
        return 'BYTEINT'

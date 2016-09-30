@@ -6,13 +6,34 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.engine import default
-from sqlalchemy import pool
+from sqlalchemy import pool, String, Numeric
 from sqlalchemy.sql import select, and_, or_
-from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler,\
-                                         TeradataTypeCompiler
+from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler, TeradataTypeCompiler
 from sqlalchemy_teradata.base import TeradataIdentifierPreparer, TeradataExecutionContext
 from sqlalchemy.sql.expression import text, table, column, asc
 from sqlalchemy import Table, Column, Index
+import sqlalchemy.types as sqltypes
+import sqlalchemy_teradata.types as tdtypes
+from itertools import groupby
+
+# ischema names is used for reflecting columns (see get_columns in the dialect)
+ischema_names = {
+    'cf': tdtypes.CHAR,
+    'cv': tdtypes.VARCHAR,
+    'uf': sqltypes.NCHAR,
+    'uv': sqltypes.NVARCHAR,
+    'co': tdtypes.CLOB,
+    'n' : tdtypes.NUMERIC,
+    'd' : tdtypes.DECIMAL,
+    'i' : sqltypes.INTEGER,
+    'i1': tdtypes.BYTEINT,
+    'i2': sqltypes.SMALLINT,
+    'i8': sqltypes.BIGINT,
+    'f' : sqltypes.FLOAT,
+    'da': sqltypes.DATE,
+    'ts': tdtypes.TIMESTAMP,
+    'at': tdtypes.TIME
+} #TODO: add the interval types and blob
 
 class TeradataDialect(default.DefaultDialect):
 
@@ -59,19 +80,21 @@ class TeradataDialect(default.DefaultDialect):
       if url is not None:
         params = super(TeradataDialect, self).create_connect_args(url)[1]
         cargs = ("Teradata", params['host'], params['username'], params['password'])
-        cparams = {param:params[param] for param in params if param not in\
+        cparams = {p:params[p] for p in params if p not in\
                                 ['host', 'username', 'password']}
-                                
         return (cargs, cparams)
-        
+
     @classmethod
     def dbapi(cls):
+
         """ Hook to the dbapi2.0 implementation's module"""
         from teradata import tdodbc
         return tdodbc
 
     def normalize_name(self, name, **kw):
-        return name.lower()
+        if name is not None:
+            return name.strip().lower()
+        return name
 
     def has_table(self, connection, table_name, schema=None):
 
@@ -86,9 +109,82 @@ class TeradataDialect(default.DefaultDialect):
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchone()
         return res is not None
 
+    def _resolve_type(self, t, **kw):
+        """
+        Resolve types for String, Numeric, Date/Time, etc. columns
+        """
+        t = self.normalize_name(t)
+        if t in ischema_names:
+            t = ischema_names[t]
+
+            if issubclass(t, sqltypes.String):
+                return t(length=kw['length']/2 if kw['chartype']=='UNICODE' else kw['length'],\
+                            charset=kw['chartype'])
+
+            elif issubclass(t, sqltypes.Numeric):
+                return t(precision=kw['prec'], scale=kw['scale'])
+
+            elif issubclass(t, sqltypes.Time) or issubclass(t, sqltypes.DateTime):
+                prec = kw['fmt']
+                prec = int(prec[prec.index('(') + 1: prec.index(')')])
+                return t(precision=prec)
+
+            else:
+                return t() # For types like Integer, ByteInt
+
+        return None
+
+    def _get_column_info(self, row):
+        """
+        Resolves the column information for get_columns given a row.
+        """
+        chartype = {
+                  0: None,
+                  1: 'LATIN',
+                  2: 'UNICODE',
+                  3: 'KANJISJIS',
+                  4: 'GRAPHIC'}
+
+        typ = self._resolve_type(row['columntype'],\
+                                    length=int(row['columnlength']),\
+                                    chartype=chartype[row['chartype']],\
+                                    prec=int(row['decimaltotaldigits'] or 0),\
+                                    scale=int(row['decimalfractionaldigits'] or 0),\
+                                    fmt=row['columnformat'])
+
+        autoinc = row['idcoltype'] in ('GA', 'GD')
+
+        return {
+                'name': self.normalize_name(row['columnname']),
+                'type': typ,
+                'nullable': row['nullable'] == u'Y',
+                'default': row['defaultvalue'],
+                'attrs': {
+                    'columnformat':row['columnformat']},
+                'autoincrement': autoinc
+               }
+
+
+    def get_columns(self, connection, table_name, schema=None, **kw):
+
+        if schema is None:
+            schema = self.default_schema_name
+
+        stmt = select([column('columnname'), column('columntype'),\
+                        column('columnlength'), column('chartype'),\
+                        column('decimaltotaldigits'), column('decimalfractionaldigits'),\
+                        column('columnformat'),\
+                        column('nullable'), column('defaultvalue'), column('idcoltype')],\
+                        from_obj=[text('dbc.ColumnsV')]).where(\
+                        and_(text('DatabaseName=:schema'),\
+                             text('TableName=:table_name')))
+
+        res = connection.execute(stmt, schema=schema, table_name=table_name).fetchall()
+        return [self._get_column_info(row) for row in res]
+
     def _get_default_schema_name(self, connection):
         return self.normalize_name(
-            connection.execute('select user').scalar())
+            connection.execute('select database').scalar())
 
     def get_table_names(self, connection, schema=None, **kw):
 
@@ -104,11 +200,19 @@ class TeradataDialect(default.DefaultDialect):
         return [self.normalize_name(name['tablename']) for name in res]
 
     def get_schema_names(self, connection, **kw):
-        stmt = select(['username'],
+        stmt = select([column('username')],
                from_obj=[text('dbc.UsersV')],
-               order_by=['username'])
+               order_by=[text('username')])
         res = connection.execute(stmt).fetchall()
-        return [self.normalize_name(name['tablename']) for name in res]
+        return [self.normalize_name(name['username']) for name in res]
+
+    def get_view_definition(self, connection, view_name, schema=None, **kw):
+
+        if schema is None:
+             schema = self.default_schema_name
+
+        res = connection.execute('show table {}.{}'.format(schema, view_name)).scalar()
+        return self.normalize_name(res)
 
     def get_view_names(self, connection, schema=None, **kw):
 
@@ -147,8 +251,8 @@ class TeradataDialect(default.DefaultDialect):
         index_name = None
 
         for index_column in res:
-            index_columns.append(index_column)
-            index_name = index_column.IndexName # There should be just one IndexName
+            index_columns.append(self.normalize_name(index_column['ColumnName']))
+            index_name = self.normalize_name(index_column['IndexName']) # There should be just one IndexName
 
         return {
             "constrained_columns": index_columns,
@@ -173,18 +277,18 @@ class TeradataDialect(default.DefaultDialect):
 
         def grouper(fk_row):
             return {
-                'name': fk_row.IndexName,
+                'name': self.normalize_name(fk_row['IndexName']),
             }
 
         unique_constraints = list()
         for constraint_info, constraint_cols in groupby(res, grouper):
             unique_constraint = {
-                'name': constraint_info['name'],
+                'name': self.normalize_name(constraint_info['name']),
                 'column_names': list()
             }
 
             for constraint_col in constraint_cols:
-                unique_constraint['column_names'].append(constraint_col.ColumnName)
+                unique_constraint['column_names'].append(self.normalize_name(constraint_col['ColumnName']))
 
             unique_constraints.append(unique_constraint)
 
@@ -194,7 +298,6 @@ class TeradataDialect(default.DefaultDialect):
         """
         Overrides base class method
         """
-        from itertools import groupby
 
         if schema is None:
             schema = self.default_schema_name
@@ -227,8 +330,8 @@ class TeradataDialect(default.DefaultDialect):
             }
 
             for constraint_col in constraint_cols:
-                fk_dict['constrained_columns'].append(constraint_col.ChildKeyColumn)
-                fk_dict['referred_columns'].append(constraint_col.ParentKeyColumn)
+                fk_dict['constrained_columns'].append(self.normalize_name(constraint_col['ChildKeyColumn']))
+                fk_dict['referred_columns'].append(self.normalize_name(constraint_col['ParentKeyColumn']))
 
             fk_dicts.append(fk_dict)
 
@@ -238,7 +341,6 @@ class TeradataDialect(default.DefaultDialect):
         """
         Overrides base class method
         """
-        from itertools import groupby
 
         if schema is None:
             schema = self.default_schema_name
@@ -266,11 +368,30 @@ class TeradataDialect(default.DefaultDialect):
             }
 
             for index_col in index_cols:
-                index_dict['column_names'].append(index_col.ColumnName)
+                index_dict['column_names'].append(self.normalize_name(index_col['ColumnName']))
 
             indices.append(index_dict)
 
         return indices
 
+    def get_transaction_mode(self, connection, **kw):
+        """
+        Returns the transaction mode set for the current session.
+        T = TDBS
+        A = ANSI
+        """
+        stmt = select([text('transaction_mode')],\
+                from_obj=[text('dbc.sessioninfov')]).\
+                where(text('sessionno=SESSION'))
+
+        res = connection.execute(stmt).scalar()
+        return res
+
+    def conn_supports_autocommit(self, connection, **kw):
+        """
+        Returns True if autocommit is used for this connection (underlying Teradata session)
+        else False
+        """
+        return self.get_transaction_mode(connection) == 'T'
 
 dialect = TeradataDialect
