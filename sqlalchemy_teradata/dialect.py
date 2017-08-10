@@ -392,6 +392,17 @@ class TeradataDialect(default.DefaultDialect):
         res = connection.execute(stmt).scalar()
         return res
 
+    def _get_dbc_version(self, connection, **kw):
+        """
+        Returns the Teradata Database software version.
+        """
+        stmt = select([text('InfoData')],\
+                from_obj=[text('dbc.dbcinfov')]).\
+                where(text('InfoKey=\'VERSION\''))
+
+        res = connection.execute(stmt).scalar()
+        return res
+
     def conn_supports_autocommit(self, connection, **kw):
         """
         Returns True if autocommit is used for this connection (underlying Teradata session)
