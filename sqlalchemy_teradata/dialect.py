@@ -32,7 +32,9 @@ ischema_names = {
     'f' : sqltypes.FLOAT,
     'da': sqltypes.DATE,
     'ts': tdtypes.TIMESTAMP,
-    'at': tdtypes.TIME
+    'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
+    'at': tdtypes.TIME,
+    'tz': tdtypes.TIMESTAMP,    #Added time with timezone
 } #TODO: add the interval types and blob
 
 class TeradataDialect(default.DefaultDialect):
@@ -125,9 +127,12 @@ class TeradataDialect(default.DefaultDialect):
                 return t(precision=kw['prec'], scale=kw['scale'])
 
             elif issubclass(t, sqltypes.Time) or issubclass(t, sqltypes.DateTime):
-                prec = kw['fmt']
-                prec = int(prec[prec.index('(') + 1: prec.index(')')])
-                return t(precision=prec)
+                #Timezone
+                tz=kw['fmt'][-1]=='Z'
+                #For some timestamps and dates, there is no precision
+                prec = kw['fmt']    
+                prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
+                return t(precision=prec,timezone=tz)
 
             else:
                 return t() # For types like Integer, ByteInt
@@ -144,10 +149,10 @@ class TeradataDialect(default.DefaultDialect):
                   2: 'UNICODE',
                   3: 'KANJISJIS',
                   4: 'GRAPHIC'}
-
-        typ = self._resolve_type(row['columntype'],\
-                                    length=int(row['columnlength']),\
-                                    chartype=chartype[row['chartype']],\
+                                #Hack for None type, lenghth, and characterset
+        typ = self._resolve_type(row['columntype'] or 'CV',\
+                                    length=int(row['columnlength'] or 0),\
+                                    chartype=chartype[row['chartype'] or 0],\
                                     prec=int(row['decimaltotaldigits'] or 0),\
                                     scale=int(row['decimalfractionaldigits'] or 0),\
                                     fmt=row['columnformat'])
