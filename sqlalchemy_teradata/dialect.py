@@ -172,6 +172,11 @@ class TeradataDialect(default.DefaultDialect):
 
     def get_columns(self, connection, table_name, schema=None, **kw):
 
+        if int(self.server_version_info.split('.')[0])<16:
+            dbc_columninfo='dbc.ColumnsV'
+        else:
+            dbc_columninfo='dbc.ColumnsQV'
+        
         if schema is None:
             schema = self.default_schema_name
 
@@ -180,7 +185,7 @@ class TeradataDialect(default.DefaultDialect):
                         column('decimaltotaldigits'), column('decimalfractionaldigits'),\
                         column('columnformat'),\
                         column('nullable'), column('defaultvalue'), column('idcoltype')],\
-                        from_obj=[text('dbc.ColumnsQV')]).where(\
+                        from_obj=[text(dbc_columninfo)]).where(\
                         and_(text('DatabaseName=:schema'),\
                              text('TableName=:table_name')))
 
@@ -401,7 +406,6 @@ class TeradataDialect(default.DefaultDialect):
                 where(text('InfoKey=\'VERSION\''))
 
         res = connection.execute(stmt).scalar()
-        self.version=res
         return res
 
     def conn_supports_autocommit(self, connection, **kw):
