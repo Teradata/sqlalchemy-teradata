@@ -180,7 +180,7 @@ class TeradataDialect(default.DefaultDialect):
                         column('decimaltotaldigits'), column('decimalfractionaldigits'),\
                         column('columnformat'),\
                         column('nullable'), column('defaultvalue'), column('idcoltype')],\
-                        from_obj=[text('dbc.ColumnsV')]).where(\
+                        from_obj=[text('dbc.ColumnsQV')]).where(\
                         and_(text('DatabaseName=:schema'),\
                              text('TableName=:table_name')))
 
@@ -392,7 +392,7 @@ class TeradataDialect(default.DefaultDialect):
         res = connection.execute(stmt).scalar()
         return res
 
-    def _get_dbc_version(self, connection, **kw):
+    def _get_server_version_info(self, connection, **kw):
         """
         Returns the Teradata Database software version.
         """
@@ -401,6 +401,7 @@ class TeradataDialect(default.DefaultDialect):
                 where(text('InfoKey=\'VERSION\''))
 
         res = connection.execute(stmt).scalar()
+        self.version=res
         return res
 
     def conn_supports_autocommit(self, connection, **kw):
