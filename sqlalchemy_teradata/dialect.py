@@ -18,6 +18,8 @@ from itertools import groupby
 
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
+    None: sqltypes.NullType,
+    
     'cf': tdtypes.CHAR,
     'cv': tdtypes.VARCHAR,
     'uf': sqltypes.NCHAR,
@@ -118,7 +120,7 @@ class TeradataDialect(default.DefaultDialect):
         t = self.normalize_name(t)
         if t in ischema_names:
             t = ischema_names[t]
-
+            
             if issubclass(t, sqltypes.String):
                 return t(length=kw['length']/2 if kw['chartype']=='UNICODE' else kw['length'],\
                             charset=kw['chartype'])
@@ -156,7 +158,7 @@ class TeradataDialect(default.DefaultDialect):
                   4: 'GRAPHIC'}
                                 #Handle None characterset
         typ = self._resolve_type(row['columntype'],\
-                                    length=int(row['columnlength']),\
+                                    length=int(row['columnlength'] or 0),\
                                     chartype=chartype[row['chartype'] or 0],\
                                     prec=int(row['decimaltotaldigits'] or 0),\
                                     scale=int(row['decimalfractionaldigits'] or 0),\
