@@ -34,7 +34,7 @@ ischema_names = {
     'ts': tdtypes.TIMESTAMP,
     'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
     'at': tdtypes.TIME,
-    'tz': tdtypes.TIMESTAMP,    #Added time with timezone
+    'tz': tdtypes.TIMESTAMP    #Added time with timezone
 } #TODO: add the interval types and blob
 
 class TeradataDialect(default.DefaultDialect):
@@ -129,9 +129,14 @@ class TeradataDialect(default.DefaultDialect):
             elif issubclass(t, sqltypes.Time) or issubclass(t, sqltypes.DateTime):
                 #Timezone
                 tz=kw['fmt'][-1]=='Z'
-                #For some timestamps and dates, there is no precision
+
+                #Precision                
                 prec = kw['fmt']    
-                prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
+                #For some timestamps and dates, there is no precision, or indicatd in scale
+                prec = prec[prec.index('(') + 1: prec.index(')')] if '(' in prec else 0
+                prec = kw['scale'] if prec=='F' else int(prec)
+
+                #prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
                 return t(precision=prec,timezone=tz)
 
             else:
@@ -149,9 +154,9 @@ class TeradataDialect(default.DefaultDialect):
                   2: 'UNICODE',
                   3: 'KANJISJIS',
                   4: 'GRAPHIC'}
-                                #Hack for None type, lenghth, and characterset
-        typ = self._resolve_type(row['columntype'] or 'CV',\
-                                    length=int(row['columnlength'] or 0),\
+                                #Handle None characterset
+        typ = self._resolve_type(row['columntype'],\
+                                    length=int(row['columnlength']),\
                                     chartype=chartype[row['chartype'] or 0],\
                                     prec=int(row['decimaltotaldigits'] or 0),\
                                     scale=int(row['decimalfractionaldigits'] or 0),\
@@ -172,14 +177,26 @@ class TeradataDialect(default.DefaultDialect):
 
     def get_columns(self, connection, table_name, schema=None, **kw):
 
-        if int(self.server_version_info.split('.')[0])<16:
-            dbc_columninfo='dbc.ColumnsV'
-        else:
-            dbc_columninfo='dbc.ColumnsQV'
+        helpView=False
         
         if schema is None:
             schema = self.default_schema_name
+        
+        if int(self.server_version_info.split('.')[0])<16:
+            dbc_columninfo='dbc.ColumnsV'
 
+            #Check if the object us a view
+            stmt = select([column('tablekind')],\
+                            from_obj=[text('dbc.tablesV')]).where(\
+                            and_(text('DatabaseName=:schema'),\
+                                 text('TableName=:table_name'),\
+                                 text("tablekind='V'")))
+            res = connection.execute(stmt, schema=schema, table_name=table_name).rowcount
+            helpView = (res==1)
+
+        else:
+            dbc_columninfo='dbc.ColumnsQV'
+        
         stmt = select([column('columnname'), column('columntype'),\
                         column('columnlength'), column('chartype'),\
                         column('decimaltotaldigits'), column('decimalfractionaldigits'),\
@@ -190,12 +207,33 @@ class TeradataDialect(default.DefaultDialect):
                              text('TableName=:table_name')))
 
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchall()
+        
+        #If this is a view in pre-16 version, get types for individual columns
+        if helpView:
+            res=[self._get_column_help(connection, schema,table_name,r['columnname']) for r in res]
+            
         return [self._get_column_info(row) for row in res]
 
     def _get_default_schema_name(self, connection):
         return self.normalize_name(
             connection.execute('select database').scalar())
 
+    def _get_column_help(self, connection, schema,table_name,column_name):
+        stmt='help column '+schema+'.'+table_name+'.'+column_name
+        res = connection.execute(stmt).fetchall()[0]
+        
+        return {'columnname':res['Column Name'],
+                'columntype':res['Type'],
+                'columnlength':res['Max Length'],
+                'chartype':res['Char Type'],
+                'decimaltotaldigits':res['Decimal Total Digits'],
+                'decimalfractionaldigits':res['Decimal Fractional Digits'],
+                'columnformat':res['Format'],
+                'nullable':res['Nullable'],
+                'defaultvalue':None,
+                'idcoltype':res['IdCol Type']
+                }
+    
     def get_table_names(self, connection, schema=None, **kw):
 
         if schema is None:
