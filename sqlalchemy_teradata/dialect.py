@@ -36,9 +36,16 @@ ischema_names = {
     'ts': tdtypes.TIMESTAMP,
     'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
     'at': tdtypes.TIME,
-    'tz': tdtypes.TIMESTAMP    #Added time with timezone
+    'tz': tdtypes.TIMESTAMP,    #Added time with timezone
+    
+    #Expreimental - Binary
+    'bf': sqltypes.BINARY,
+    'bv': sqltypes.VARBINARY,
+    'bo': sqltypes.BLOB
 } #TODO: add the interval types and blob
 
+stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
+        
 class TeradataDialect(default.DefaultDialect):
 
     name = 'teradata'
@@ -119,6 +126,7 @@ class TeradataDialect(default.DefaultDialect):
         """
         t = self.normalize_name(t)
         if t in ischema_names:
+            #print(t,ischema_names[t])
             t = ischema_names[t]
             
             if issubclass(t, sqltypes.String):
@@ -141,10 +149,13 @@ class TeradataDialect(default.DefaultDialect):
                 #prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
                 return t(precision=prec,timezone=tz)
 
+            elif issubclass(t, sqltypes.Interval):
+                return t(day_precision=kw['prec'],second_precision=kw['scale'])
+
             else:
                 return t() # For types like Integer, ByteInt
 
-        return None
+        return ischema_names[None]
 
     def _get_column_info(self, row):
         """
@@ -156,10 +167,11 @@ class TeradataDialect(default.DefaultDialect):
                   2: 'UNICODE',
                   3: 'KANJISJIS',
                   4: 'GRAPHIC'}
-                                #Handle None characterset
+        
+        #Handle unspecified characterset and disregard chartypes specified for non-character types (e.g. binary, json)
         typ = self._resolve_type(row['columntype'],\
                                     length=int(row['columnlength'] or 0),\
-                                    chartype=chartype[row['chartype'] or 0],\
+                                    chartype=chartype[row['chartype'] if row['chartype'] in stringtypes else 0],\
                                     prec=int(row['decimaltotaldigits'] or 0),\
                                     scale=int(row['decimalfractionaldigits'] or 0),\
                                     fmt=row['columnformat'])
