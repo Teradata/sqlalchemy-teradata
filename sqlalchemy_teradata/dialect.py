@@ -15,6 +15,7 @@ from sqlalchemy import Table, Column, Index
 import sqlalchemy.types as sqltypes
 import sqlalchemy_teradata.types as tdtypes
 from itertools import groupby
+from teradata.tdodbc import osType
 
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
@@ -51,7 +52,12 @@ class TeradataDialect(default.DefaultDialect):
     name = 'teradata'
     driver = 'teradata'
     default_paramstyle = 'qmark'
-    poolclass = pool.SingletonThreadPool
+    
+    #Connection pooling not supported by Linux ODBC driver
+    if osType=='Linux':
+        poolclass = pool.NullPool
+    else:
+        poolclass = pool.SingletonThreadPool
 
     statement_compiler = TeradataCompiler
     ddl_compiler = TeradataDDLCompiler
