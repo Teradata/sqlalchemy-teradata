@@ -5,6 +5,7 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
+import re
 from sqlalchemy import *
 from sqlalchemy.sql import compiler
 from sqlalchemy.engine import default
@@ -17,6 +18,10 @@ from sqlalchemy.types import CHAR, DATE, DATETIME, \
                     BLOB, CLOB, TIMESTAMP, FLOAT, BIGINT, DECIMAL, NUMERIC, \
                     NCHAR, NVARCHAR, INTEGER, \
                     SMALLINT, TIME, TEXT, VARCHAR, REAL
+
+AUTOCOMMIT_REGEXP = re.compile(
+            r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|MERGE)',
+                re.I | re.UNICODE)
 
 #TODO: Read this from the dbc.restrictedwordsv view
 ReservedWords = set(["abort", "abortsession", "abs", "access_lock", "account",
@@ -36,6 +41,9 @@ class TeradataExecutionContext(default.DefaultExecutionContext):
 
     def __init__(self, dialect, connection, dbapi_connection, compiled_ddl):
         super(TeradataExecutionContext, self).__init__(dialect, connection, dbapi_connection, compiled_ddl)
+
+    def should_autocommit_text(self, statement):
+        return AUTOCOMMIT_REGEXP.match(statement)
 
 class TeradataIdentifierPreparer(compiler.IdentifierPreparer):
 
