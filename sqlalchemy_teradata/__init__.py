@@ -10,7 +10,7 @@ from sqlalchemy.sql.sqltypes import (Integer, Interval, SmallInteger,\
                                      BigInteger, Float, Boolean,\
                                      Text, Unicode, UnicodeText,\
                                      DATE)
-__version__ = '0.0.7'
+__version__ = '0.1.0'
 
 __all__ = (Integer, SmallInteger, BigInteger, Float, Text, Unicode,
            UnicodeText, Interval, Boolean,
