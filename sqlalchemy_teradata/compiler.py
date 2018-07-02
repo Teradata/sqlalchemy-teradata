@@ -126,6 +126,26 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
         text += "\n)%s\n\n" % self.post_create_table(table)
         return text
 
+    def visit_create_index(self, create, include_schema=False,
+                           include_table_schema=True):
+        index = create.element
+        self._verify_index_table(index)
+        preparer = self.preparer
+        text = "CREATE "
+        if index.unique:
+            text += "UNIQUE "
+        text += "INDEX %s (%s) ON %s" \
+            % (
+                self._prepared_index_name(index,
+                                          include_schema=include_schema),
+                ', '.join(
+                    self.sql_compiler.process(
+                        expr, include_table=False, literal_binds=True) for
+                    expr in index.expressions),
+                preparer.format_table(index.table,
+                                      use_schema=include_table_schema)
+            )
+        return text
 
     def post_create_table(self, table):
 
