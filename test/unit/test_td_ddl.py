@@ -1,9 +1,7 @@
 from sqlalchemy import Table, Column, Index
 from sqlalchemy.schema import CreateColumn, CreateTable, CreateIndex, CreateSchema
 from sqlalchemy import MetaData, create_engine
-from sqlalchemy_teradata.types import ( VARCHAR, CHAR, CLOB)
-from sqlalchemy_teradata.types import ( NUMERIC, DECIMAL, )
-#from sqlalchemy_teradata.types import ( DATE, TIME, TIMESTAMP )
+from sqlalchemy_teradata.types import ( VARCHAR, CHAR, CLOB, NUMERIC, DECIMAL )
 from sqlalchemy.testing import fixtures
 
 from itertools import product

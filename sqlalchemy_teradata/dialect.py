@@ -19,7 +19,7 @@ from itertools import groupby
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
     None: sqltypes.NullType,
-    
+
     'cf': tdtypes.CHAR,
     'cv': tdtypes.VARCHAR,
     'uf': sqltypes.NCHAR,
@@ -37,7 +37,7 @@ ischema_names = {
     'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
     'at': tdtypes.TIME,
     'tz': tdtypes.TIMESTAMP,    #Added time with timezone
-    
+
     #Expreimental - Binary
     'bf': sqltypes.BINARY,
     'bv': sqltypes.VARBINARY,
@@ -45,7 +45,7 @@ ischema_names = {
 } #TODO: add the interval types and blob
 
 stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
-        
+
 class TeradataDialect(default.DefaultDialect):
 
     name = 'teradata'
@@ -128,10 +128,13 @@ class TeradataDialect(default.DefaultDialect):
         if t in ischema_names:
             #print(t,ischema_names[t])
             t = ischema_names[t]
-            
+
             if issubclass(t, sqltypes.String):
                 return t(length=kw['length']/2 if kw['chartype']=='UNICODE' else kw['length'],\
                             charset=kw['chartype'])
+
+            elif issubclass(t, sqltypes.Float):
+                return t(precision=kw['prec'])
 
             elif issubclass(t, sqltypes.Numeric):
                 return t(precision=kw['prec'], scale=kw['scale'])
@@ -140,8 +143,8 @@ class TeradataDialect(default.DefaultDialect):
                 #Timezone
                 tz=kw['fmt'][-1]=='Z'
 
-                #Precision                
-                prec = kw['fmt']    
+                #Precision
+                prec = kw['fmt']
                 #For some timestamps and dates, there is no precision, or indicatd in scale
                 prec = prec[prec.index('(') + 1: prec.index(')')] if '(' in prec else 0
                 prec = kw['scale'] if prec=='F' else int(prec)
@@ -167,7 +170,7 @@ class TeradataDialect(default.DefaultDialect):
                   2: 'UNICODE',
                   3: 'KANJISJIS',
                   4: 'GRAPHIC'}
-        
+
         #Handle unspecified characterset and disregard chartypes specified for non-character types (e.g. binary, json)
         typ = self._resolve_type(row['columntype'],\
                                     length=int(row['columnlength'] or 0),\
@@ -192,10 +195,10 @@ class TeradataDialect(default.DefaultDialect):
     def get_columns(self, connection, table_name, schema=None, **kw):
 
         helpView=False
-        
+
         if schema is None:
             schema = self.default_schema_name
-        
+
         if int(self.server_version_info.split('.')[0])<16:
             dbc_columninfo='dbc.ColumnsV'
 
@@ -210,7 +213,7 @@ class TeradataDialect(default.DefaultDialect):
 
         else:
             dbc_columninfo='dbc.ColumnsQV'
-        
+
         stmt = select([column('columnname'), column('columntype'),\
                         column('columnlength'), column('chartype'),\
                         column('decimaltotaldigits'), column('decimalfractionaldigits'),\
@@ -221,11 +224,11 @@ class TeradataDialect(default.DefaultDialect):
                              text('TableName=:table_name')))
 
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchall()
-        
+
         #If this is a view in pre-16 version, get types for individual columns
         if helpView:
             res=[self._get_column_help(connection, schema,table_name,r['columnname']) for r in res]
-            
+
         return [self._get_column_info(row) for row in res]
 
     def _get_default_schema_name(self, connection):
@@ -235,7 +238,7 @@ class TeradataDialect(default.DefaultDialect):
     def _get_column_help(self, connection, schema,table_name,column_name):
         stmt='help column '+schema+'.'+table_name+'.'+column_name
         res = connection.execute(stmt).fetchall()[0]
-        
+
         return {'columnname':res['Column Name'],
                 'columntype':res['Type'],
                 'columnlength':res['Max Length'],
@@ -247,7 +250,7 @@ class TeradataDialect(default.DefaultDialect):
                 'defaultvalue':None,
                 'idcoltype':res['IdCol Type']
                 }
-    
+
     def get_table_names(self, connection, schema=None, **kw):
 
         if schema is None:
