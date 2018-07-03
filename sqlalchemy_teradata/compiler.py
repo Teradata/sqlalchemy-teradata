@@ -57,13 +57,11 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
                                       fallback().
                                       log().
                                       with_journal_table(t2.name)
-
         CREATE TABLE name, fallback,
         log,
         with journal table = [database/user.]table_name(
           ...
         )
-
         teradata_postfixes can also be a list of strings to be appended
         in the order given.
         """
@@ -146,6 +144,41 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
                                       use_schema=include_table_schema)
             )
         return text
+
+    # def create_table_suffix(self, table):
+    #     """
+    #     This hook processes the optional keyword teradata_postfixes
+    #     ex.
+    #     from sqlalchemy_teradata.compiler import\
+    #                     TDCreateTablePostfix as Opts
+    #     t = Table( 'name', meta,
+    #                ...,
+    #                teradata_postfixes=Opts.
+    #                                   fallback().
+    #                                   log().
+    #                                   with_journal_table(t2.name)
+    #
+    #     CREATE TABLE name, fallback,
+    #     log,
+    #     with journal table = [database/user.]table_name(
+    #       ...
+    #     )
+    #
+    #     teradata_postfixes can also be a list of strings to be appended
+    #     in the order given.
+    #     """
+    #     post=table.dialect_kwargs['teradata_postfixes']
+    #
+    #     if isinstance(post, TDCreateTablePostfix):
+    #         if post.opts:
+    #             return ',\n' + post.compile()
+    #         else:
+    #             return post
+    #     elif post:
+    #         assert type(post) is list
+    #         res = ',\n ' + ',\n'.join(post)
+    #     else:
+    #         return ''
 
     def post_create_table(self, table):
 
@@ -433,7 +466,9 @@ class TDCreateTablePost(TeradataOptions):
             c += ['column('+ k +') no auto compress'\
                             for k,v in cols.items() if v is False]
 
-            c += ['column(k)' for k,v in cols.items() if v is None]
+            # TODO
+            # c += ['column(k)' for k,v in cols.items() if v is None]
+            c += ['column('+ k +')' for k,v in cols.items() if v is None]
 
         if rows:
             c += ['row('+ k +') auto compress'\
@@ -442,7 +477,9 @@ class TDCreateTablePost(TeradataOptions):
             c += ['row('+ k +') no auto compress'\
                             for k,v in rows.items() if v is False]
 
-            c += [k for k,v in rows.items() if v is None]
+            # TODO
+            # c += [k for k,v in rows.items() if v is None]
+            c += ['row('+ k +')' for k,v in rows.items() if v is None]
 
         return c
 

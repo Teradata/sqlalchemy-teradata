@@ -38,7 +38,7 @@ class TestCompileCreateTableDDL(testing.fixtures.TestBase):
         cols  = [Column('column_' + str(i), type)
             for i, type in enumerate(self.sqlalch_types)]
         table = Table('table_test_types_sqlalch', self.metadata, *cols)
-        self.metadata.create_all(self.engine, tables=[table])
+        self.metadata.create_all()
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
@@ -69,7 +69,7 @@ class TestCompileCreateTableDDL(testing.fixtures.TestBase):
         cols = [Column('column_' + str(i), type)
             for i, type in enumerate(self.sqlalch_types)]
         table = Table('table_test_types_sqlalch', self.metadata, *cols)
-        self.metadata.create_all(self.engine, tables=[table])
+        self.metadata.create_all()
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
@@ -100,7 +100,7 @@ class TestCompileCreateTableDDL(testing.fixtures.TestBase):
         cols = [Column('column_' + str(i), type)
             for i, type in enumerate(self.sqlalch_types)]
         table = Table('table_test_types_sqlalch', self.metadata, *cols)
-        self.metadata.create_all(self.engine, tables=[table])
+        self.metadata.create_all()
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
@@ -123,13 +123,13 @@ class TestCompileCreateTableDDL(testing.fixtures.TestBase):
             sqlalch_td.UnicodeText:  'CLOB'
         }
 
-        parsed_types = utils.parse_types_show_table(
+        parsed_attrs = utils.parse_show_table_col_attrs(
             self.conn.execute(
                 'SHOW TABLE table_test_types_sqlalch').fetchone().items()[0][1],
             tuple(col.name for col in cols))
 
-        for col, typ in parsed_types.items():
-            assert(type_map[col_to_type[col]] in typ)
+        for col, attr in parsed_attrs.items():
+            assert(type_map[col_to_type[col]] in attr)
 
     def test_types_rawsql_select(self):
         stmt = 'CREATE TABLE table_test_types_rawsql (' +\
@@ -214,10 +214,10 @@ class TestCompileCreateTableDDL(testing.fixtures.TestBase):
             'CLOB':         'CLOB'
         }
 
-        parsed_types = utils.parse_types_show_table(
+        parsed_attrs = utils.parse_show_table_col_attrs(
             self.conn.execute(
                 'SHOW TABLE table_test_types_rawsql').fetchone().items()[0][1],
             tuple('column_' + str(i) for i in range(len(self.rawsql_types))))
 
-        for col, typ in parsed_types.items():
-            assert(type_map[col_to_type[col]] in typ)
+        for col, attr in parsed_attrs.items():
+            assert(type_map[col_to_type[col]] in attr)
