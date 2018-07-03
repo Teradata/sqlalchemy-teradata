@@ -366,18 +366,20 @@ class TDCreateTablePostfix(TeradataOptions):
         return self.__class__(self._append(self.opts,\
                         {'blockcompression':opt}))
 
-    def with_no_isolated_loading(self):
-        return self.__class__(self._append(self.opts,\
-                        {'with no isolated loading':None}))
+    def with_no_isolated_loading(self, concurrent=False):
+        res = 'with no ' +\
+            ('concurrent ' if concurrent else '') +\
+            'isolated loading'
+        return self.__class__(self._append(self.opts, {res:None}))
 
-    def with_concurrent_isolated_loading(self, opt=None):
-        """
-        opt is a string that takes values 'all', 'insert', or 'none'
-        """
-        assert opt in ('all', 'insert', 'none')
-        for_stmt = ' for '+opt if opt is not None else ''
-        res = 'with concurrent isolated loading'+for_stmt
-        return self.__class__(self._append(self.opts, {res:opt}))
+    def with_isolated_loading(self, concurrent=False, opt=None):
+        assert opt in ('all', 'insert', 'none', None)
+        for_stmt = ' for ' + opt if opt is not None else ''
+        res = 'with ' +\
+            ('concurrent ' if concurrent else '') +\
+            'isolated loading' + for_stmt
+        return self.__class__(self._append(self.opts, {res:None}))
+
 
 class TDCreateTablePost(TeradataOptions):
     """

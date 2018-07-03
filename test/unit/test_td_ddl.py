@@ -114,7 +114,7 @@ class TestCompileCreateSuffixDDL(fixtures.TestBase):
 
     def test_create_suffix(self):
         my_table = Table('tablename', self.metadata,
-            Column('columnname', CLOB),
+            Column('columnname', NUMERIC),
             teradata_postfixes=
                 TDCreateTablePostfix().fallback() \
                                       .log() \
@@ -128,8 +128,8 @@ class TestCompileCreateSuffixDDL(fixtures.TestBase):
                                       .min_datablocksize() \
                                       .max_datablocksize() \
                                       .blockcompression() \
-                                      .with_no_isolated_loading() \
-                                      .with_concurrent_isolated_loading('none'))
+                                      .with_no_isolated_loading(True) \
+                                      .with_isolated_loading(True, 'all'))
         self.metadata.create_all()
 
         postfix_ddl = self.last_compiled[
@@ -147,8 +147,8 @@ class TestCompileCreateSuffixDDL(fixtures.TestBase):
             '\nminimum datablocksize,' \
             '\nmaximum datablocksize,' \
             '\nblockcompression=default,' \
-            '\nwith no isolated loading,' \
-            '\nwith concurrent isolated loading for none=none ')
+            '\nwith no concurrent isolated loading,' \
+            '\nwith concurrent isolated loading for all ')
 
 class TestCompileCreateTablePostDDL(fixtures.TestBase):
 
@@ -182,9 +182,7 @@ class TestCompileCreateTablePostDDL(fixtures.TestBase):
                                             'd2': None,
                                             'd3': False
                                         },
-                                        const=1
-                                   ))
-
+                                        const=1))
         self.metadata.create_all()
 
         post_create_ddl = self.last_compiled[self.last_compiled.index(')\n')+2:]
