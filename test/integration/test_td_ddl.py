@@ -4,12 +4,12 @@ from sqlalchemy import testing
 from sqlalchemy.engine import reflection
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
+from test import utils
 
 import sqlalchemy_teradata as sqlalch_td
 import sqlalchemy.sql as sql
 import decimal, datetime
-
-import utils, itertools
+import itertools
 
 """
 Integration testing for DDL Expressions and Dialect Extensions
