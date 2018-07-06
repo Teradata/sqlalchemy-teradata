@@ -16,7 +16,7 @@ Integration testing for DDL Expressions and Dialect Extensions
 The tests are based of off SQL Data Definition Language (Release 15.10, Dec '15)
 """
 
-class TestCreateTableDDL(testing.fixtures.TestBase):
+class TestTypesDDL(testing.fixtures.TestBase):
 
     def setup(self):
         self.conn     = testing.db.connect()
@@ -287,6 +287,111 @@ class TestCreateTableDDL(testing.fixtures.TestBase):
             assert(type_map[col_to_type[col]] in attr)
 
 
+def test_decorator(test_fn):
+
+    def test_wrapper_fn(self):
+        test_fn(self)
+        self.metadata.create_all(checkfirst=False)
+        self._test_tables_created(self.metadata, self.engine)
+
+    test_wrapper_fn.__name__ = test_fn.__name__
+    return test_wrapper_fn
+
+
+class TestCreateIndexDDL(testing.fixtures.TestBase):
+
+    def setup(self):
+        self.conn     = testing.db.connect()
+        self.engine   = self.conn.engine
+        self.metadata = MetaData(bind=self.engine)
+
+    def tearDown(self):
+        self.metadata.drop_all(self.engine)
+        self.conn.invalidate()
+        self.conn.close()
+
+    def _test_tables_created(self, metadata, engine):
+        """
+        Asserts that all the tables within the passed in metadata exists on the
+        database of the specified engine and are the only tables on that
+        database.
+
+        Args:
+            metadata: A MetaData instance containing the tables to check for.
+            engine:   An Engine instance associated with a dialect and database
+                      for which the tables in the metadata are to be checked for.
+
+        Raises:
+            AssertionError: Raised when the set of tables contained in the
+                            metadata is not equal to the set of tables on
+                            the engine's associated database.
+        """
+        assert(
+            set([tablename for tablename, _ in metadata.tables.items()]) ==
+            set(engine.table_names()))
+
+    # TODO Add a more thorough test to check that indexes are actually being
+    #      created on the database
+    # def _test_indexes_created(self, metadata, engine):
+
+    @test_decorator
+    def test_create_index_inline(self):
+        """
+        Tests creating tables with an inline column index.
+        """
+        my_table = Table('t_index_inline', self.metadata,
+                        Column('c1', NUMERIC),
+                        Column('c2', DECIMAL, index=True))
+
+    @test_decorator
+    def test_create_index_construct(self):
+        """
+        Tests creating tables with the schema index construct.
+        """
+        my_table = Table('t_index_construct', self.metadata,
+                        Column('c1', NUMERIC),
+                        Column('c2', DECIMAL))
+        Index('i', my_table.c.c2)
+
+    @test_decorator
+    def test_create_multiple_indexes(self):
+        """
+        Tests creating tables with multiple indexes.
+        """
+        my_table = Table('t_multiple_indexes', self.metadata,
+                        Column('c1', NUMERIC),
+                        Column('c2', DECIMAL))
+        Index('i', my_table.c.c1, my_table.c.c2)
+
+    @test_decorator
+    def test_create_index_unique(self):
+        """
+        Tests creating tables with a unique index.
+        """
+        my_table = Table('t_index_unique', self.metadata,
+                        Column('c', NUMERIC, index=True, unique=True))
+
+    @test_decorator
+    def test_create_multiple_unique_indexes(self):
+        """
+        Tests creating tables with multiple unique indexes.
+        """
+        my_table = Table('t_multiple_unique_indexes', self.metadata,
+                        Column('c1', NUMERIC),
+                        Column('c2', DECIMAL))
+        Index('i', my_table.c.c1, my_table.c.c2, unique=True)
+
+    @test_decorator
+    def test_create_index_noname(self):
+        """
+        Tests creating tables with an index without an index name.
+        """
+        my_table = Table('t_index_noname', self.metadata,
+                        Column('c1', NUMERIC),
+                        Column('c2', DECIMAL))
+        Index(None, my_table.c.c2)
+
+
 class TestCreateSuffixDDL(testing.fixtures.TestBase):
 
     def setup(self):
@@ -363,6 +468,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
             set([tablename for tablename, _ in metadata.tables.items()]) ==
             set(engine.table_names()))
 
+    @test_decorator
     def test_create_suffix_fallback(self):
         """
         Tests creating tables with the fallback suffix and the following
@@ -374,9 +480,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         self._create_tables_with_suffix_opts(
             TDCreateTableSuffix().fallback, opts, self.metadata)
 
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
-
+    @test_decorator
     def test_create_suffix_log(self):
         """
         Tests creating tables with the log suffix and the following
@@ -387,9 +491,6 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         opts = (True,)
         self._create_tables_with_suffix_opts(
             TDCreateTableSuffix().log, opts, self.metadata)
-
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
 
     def test_create_suffix_nolog_err(self):
         """
@@ -414,6 +515,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
     #      creating a new database during testing is not ideal)
     # def test_create_suffix_journal(self):
 
+    @test_decorator
     def test_create_suffix_checksum(self):
         """
         Tests creating tables with the checksum suffix and the following
@@ -425,9 +527,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         self._create_tables_with_suffix_opts(
             TDCreateTableSuffix().checksum, opts, self.metadata)
 
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
-
+    @test_decorator
     def test_create_suffix_freespace(self):
         """
         Tests creating tables with the freespace suffix and the following
@@ -438,9 +538,6 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         opts = (0, 75, 40)
         self._create_tables_with_suffix_opts(
             TDCreateTableSuffix().freespace, opts, self.metadata)
-
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
 
     def test_create_suffix_freespace_err(self):
         """
@@ -460,6 +557,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
             str(exc_info.value))
         assert(not self.engine.has_table('t_freespace_100'))
 
+    @test_decorator
     def test_create_suffix_mergeblockratio(self):
         """
         Tests creating tables with the mergeblockratio suffix and the following
@@ -474,9 +572,6 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         Table('t_no_mergeblockratio', self.metadata,
             Column('c', Integer),
             teradata_suffixes=TDCreateTableSuffix().no_mergeblockratio())
-
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
 
     def test_create_suffix_mergeblockratio_err(self):
         """
@@ -496,6 +591,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
             str(exc_info.value))
         assert(not self.engine.has_table('t_mergeblockratio_101'))
 
+    @test_decorator
     def test_create_suffix_datablocksize(self):
         """
         Tests creating tables with the datablocksize suffix and the following
@@ -517,9 +613,6 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
             Column('c', Integer),
             teradata_suffixes=TDCreateTableSuffix().max_datablocksize())
 
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
-
     def test_create_suffix_datablocksize_err(self):
         """
         Tests for specific error(s) when creating tables with the datablocksize
@@ -539,6 +632,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
             str(exc_info.value))
         assert(not self.engine.has_table('t_datablocksize_1024'))
 
+    @test_decorator
     def test_create_suffix_blockcompression(self):
         """
         Tests creating tables with the blockcompression suffix and the following
@@ -550,9 +644,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         self._create_tables_with_suffix_opts(
             TDCreateTableSuffix().blockcompression, opts, self.metadata)
 
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
-
+    @test_decorator
     def test_create_suffix_no_isolated_loading(self):
         """
         Tests creating tables with the no_isolated_loading suffix and the following
@@ -564,9 +656,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         self._create_tables_with_suffix_opts(
             TDCreateTableSuffix().with_no_isolated_loading, opts, self.metadata)
 
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
-
+    @test_decorator
     def test_create_suffix_isolated_loading(self):
         """
         Tests creating tables with the isolated_loading suffix and the following
@@ -581,11 +671,8 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
             TDCreateTableSuffix().with_isolated_loading,
             itertools.product(concurrent_opts, for_opts), self.metadata)
 
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
 
-
-class TestCreateTablePostDDL(testing.fixtures.TestBase):
+class TestCreatePostCreateDDL(testing.fixtures.TestBase):
 
     def setup(self):
         self.conn     = testing.db.connect()
@@ -669,6 +756,7 @@ class TestCreateTablePostDDL(testing.fixtures.TestBase):
             set([tablename for tablename, _ in metadata.tables.items()]) ==
             set(engine.table_names()))
 
+    @test_decorator
     def test_create_post_no_primary_index(self):
         """
         Tests creating tables with the no_primary_index post_create.
@@ -677,9 +765,7 @@ class TestCreateTablePostDDL(testing.fixtures.TestBase):
             Column('c', Integer),
             teradata_post_create=TDCreateTablePost().no_primary_index())
 
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
-
+    @test_decorator
     def test_create_post_primary_index(self):
         """
         Tests creating tables with the primary_index post_create and the following
@@ -695,9 +781,6 @@ class TestCreateTablePostDDL(testing.fixtures.TestBase):
         self._create_tables_with_post_opts(
             TDCreateTablePost().primary_index,
             itertools.product(name_opts, unique_opts, cols_opts), self.metadata)
-
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
 
     # TODO Add test(s) for primary_amp (which requires partition_by)
     # def test_create_post_primary_amp(self):
@@ -729,6 +812,7 @@ class TestCreateTablePostDDL(testing.fixtures.TestBase):
     #     self.metadata.create_all(checkfirst=False)
     #     self._test_tables_created(self.metadata, self.engine)
 
+    @test_decorator
     def test_create_post_unique_index(self):
         """
         Tests creating tables with the unique_index post_create and the following
@@ -742,9 +826,6 @@ class TestCreateTablePostDDL(testing.fixtures.TestBase):
         self._create_tables_with_post_opts(
             TDCreateTablePost().unique_index,
             itertools.product(name_opts, cols_opts), self.metadata)
-
-        self.metadata.create_all(checkfirst=False)
-        self._test_tables_created(self.metadata, self.engine)
 
     def test_create_post_unique_index_err(self):
         """
