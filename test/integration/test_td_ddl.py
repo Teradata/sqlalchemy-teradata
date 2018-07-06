@@ -12,7 +12,7 @@ import decimal, datetime
 import utils, itertools
 
 """
-Test DDL Expressions and Dialect Extensions
+Integration testing for DDL Expressions and Dialect Extensions
 The tests are based of off SQL Data Definition Language (Release 15.10, Dec '15)
 """
 
@@ -36,6 +36,16 @@ class TestCreateTableDDL(testing.fixtures.TestBase):
         self.conn.close()
 
     def test_types_sqlalch_select(self):
+        """
+        Tests that the SQLAlchemy types exported by sqlalchemy_teradata
+        correctly translate to the corresponding native Python types through
+        selection.
+
+        This is carried out by creating a test table containing all the exported
+        types and then querying data from that table to check that the returned
+        cursor_description (types) matches expectation. The test table is
+        created through sqlalchemy schema constructs and meta.create_all().
+        """
         cols  = [Column('column_' + str(i), type)
             for i, type in enumerate(self.sqlalch_types)]
         table = Table('table_test_types_sqlalch', self.metadata, *cols)
@@ -67,6 +77,17 @@ class TestCreateTableDDL(testing.fixtures.TestBase):
             assert(type_map[col_to_type[col[0]]] == col[1])
 
     def test_types_sqlalch_reflect(self):
+        """
+        Tests that the SQLAlchemy types exported by sqlalchemy_teradata
+        correctly translate to the corresponding SQLAlchemy types through
+        table reflection.
+
+        This is carried out by creating a test table containing all the exported
+        types and then reflecting the table back and checking that each column
+        type is consistent with the types the table was created with. The test
+        table is created through sqlalchemy schema constructs and
+        meta.create_all().
+        """
         cols = [Column('column_' + str(i), type)
             for i, type in enumerate(self.sqlalch_types)]
         table = Table('table_test_types_sqlalch', self.metadata, *cols)
@@ -98,6 +119,17 @@ class TestCreateTableDDL(testing.fixtures.TestBase):
             assert(type_map[col_to_type[col['name']]] == type(col['type']))
 
     def test_types_sqlalch_show(self):
+        """
+        Tests that the SQLAlchemy types exported by sqlalchemy_teradata
+        correctly translate to the corresponding database types through
+        show table.
+
+        This is carried out by creating a test table containing all the exported
+        types and then doing a SHOW TABLE query on the created table. The
+        returned table string is then parsed to extract the attributes of each
+        column and then checked against the expected types. The test table is
+        created through sqlalchemy schema constructs and meta.create_all().
+        """
         cols = [Column('column_' + str(i), type)
             for i, type in enumerate(self.sqlalch_types)]
         table = Table('table_test_types_sqlalch', self.metadata, *cols)
@@ -133,6 +165,16 @@ class TestCreateTableDDL(testing.fixtures.TestBase):
             assert(type_map[col_to_type[col]] in attr)
 
     def test_types_rawsql_select(self):
+        """
+        Tests that a selection of SQL types correctly translate to the
+        corresponding native Python types through selection.
+
+        This is carried out by creating a test table containing the selection of
+        types and then querying data from that table to check that the returned
+        cursor_description (types) matches expectation. The test table is
+        created by directly executing the appropriate DDL on a Teradata
+        SQLAlchemy engine.
+        """
         stmt = 'CREATE TABLE table_test_types_rawsql (' +\
                ', '.join(['column_' + str(i) + ' ' + str(type) for
                i, type in enumerate(self.rawsql_types)]) + ')'
@@ -162,6 +204,16 @@ class TestCreateTableDDL(testing.fixtures.TestBase):
             assert(type_map[col_to_type[col[0]]] == col[1])
 
     def test_types_rawsql_reflect(self):
+        """
+        Tests that a selection of SQL types correctly translate to the
+        corresponding SQLAlchemy types through reflection.
+
+        This is carried out by creating a test table containing the selection of
+        types and then reflecting the table back and checking that each column
+        type is consistent with the types the table was created with. The test
+        table is created by directly executing the appropriate DDL on a Teradata
+        SQLAlchemy engine.
+        """
         stmt = 'CREATE TABLE table_test_types_rawsql (' +\
                ', '.join(['column_' + str(i) + ' ' + str(type) for
                i, type in enumerate(self.rawsql_types)]) + ')'
@@ -191,6 +243,17 @@ class TestCreateTableDDL(testing.fixtures.TestBase):
             assert(type_map[col_to_type[col['name']]] == type(col['type']))
 
     def test_types_rawsql_show(self):
+        """
+        Tests that a selection of SQL types correctly translate to the
+        corresponding database types through show table.
+
+        This is carried out by creating a test table containing the selection of
+        types and then doing a SHOW TABLE query on the created table. The
+        returned table string is then parsed to extract the attributes of each
+        column and then checked against the expected types. The test table is
+        created by directly executing the appropriate DDL on a Teradata
+        SQLAlchemy engine.
+        """
         stmt = 'CREATE TABLE table_test_types_rawsql (' +\
                ', '.join(['column_' + str(i) + ' ' + str(type) for
                i, type in enumerate(self.rawsql_types)]) + ')'
@@ -236,213 +299,467 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         self.conn.invalidate()
         self.conn.close()
 
-    def test_create_suffix_fallback(self):
-        Table('t_no_fallback', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().fallback(enabled=False))
+    def _generate_table_name(self, base, opt):
+        """
+        Generates a unique table name for each base and option argument
+        with the following form:
 
-        Table('t_fallback', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().fallback(enabled=True))
+            't_base_opt1_op2 ... _optn'
+
+        Args:
+            base: The base name of the table.
+            opt:  The option passed to the table generation process. This is
+                  expected to either be a primitive or a tuple of primitives.
+
+        Returns:
+            A unique table name of a particular form based on the
+            specified arguments.
+        """
+        return 't_' + base + '_' +\
+            ('_'.join([str(arg).lower() for
+                arg in opt if arg is not None])
+            if isinstance(opt, tuple)
+            else str(opt).lower())
+
+    def _create_tables_with_suffix_opts(self, suffix, opts, metadata):
+        """
+        Create tables each with a particular TDCreateTablePostfix over various
+        options of the suffix (and bind each table to the passed in metadata).
+
+        Args:
+            suffix:   The TDCreateTablePostfix (function) to create the
+                      tables with.
+            opts:     The various options of the suffix to create the
+                      tables with. This is expected to either be a list of
+                      tuples or list of primitives.
+            metadata: The metadata to bind all created tables to.
+        """
+        for opt in opts:
+            Table(
+                self._generate_table_name(suffix.__name__, opt),
+                metadata,
+                Column('c', Integer),
+                teradata_postfixes=suffix(*opt)
+                    if isinstance(opt, tuple)
+                    else suffix(opt))
+
+    def _test_tables_created(self, metadata, engine):
+        """
+        Asserts that all the tables within the passed in metadata exists on the
+        database of the specified engine and are the only tables on that
+        database.
+
+        Args:
+            metadata: A MetaData instance containing the tables to check for.
+            engine:   An Engine instance associated with a dialect and database
+                      for which the tables in the metadata are to be checked for.
+
+        Raises:
+            AssertionError: Raised when the set of tables contained in the
+                            metadata is not equal to the set of tables on
+                            the engine's associated database.
+        """
+        assert(
+            set([tablename for tablename, _ in metadata.tables.items()]) ==
+            set(engine.table_names()))
+
+    def test_create_suffix_fallback(self):
+        """
+        Tests creating tables with the fallback suffix and the following
+        option(s):
+
+            enabled = True, False
+        """
+        opts = (True, False)
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().fallback, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_no_fallback'))
-        assert(self.engine.has_table('t_fallback'))
+        self._test_tables_created(self.metadata, self.engine)
 
     def test_create_suffix_log(self):
-        Table('t_log', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().log(enabled=True))
+        """
+        Tests creating tables with the log suffix and the following
+        option(s):
+
+            enabled = True
+        """
+        opts = (True,)
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().log, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_log'))
+        self._test_tables_created(self.metadata, self.engine)
 
-    @pytest.mark.xfail(strict=True)
     def test_create_suffix_nolog_err(self):
-        Table('t_nolog_invalid', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().log(enabled=False))
+        """
+        Tests for specific error(s) when creating tables with the log suffix
+        and the following option(s):
 
-        self.metadata.create_all(checkfirst=False)
+            enabled = False
+        """
+        with pytest.raises(Exception) as exc_info:
+            opts = (False,)
+            self._create_tables_with_suffix_opts(
+                TDCreateTablePostfix().log, opts, self.metadata)
 
-    # TODO
+            self.metadata.create_all(checkfirst=False)
+
+        assert('NO LOG keywords not allowed for permanent table' in
+            str(exc_info.value))
+        assert(not self.engine.has_table('t_log_false'))
+
+    # TODO Add test(s) for journaling (currently unable to create a new permanent
+    #      journal for the database through MODIFY, can through CREATE but
+    #      creating a new database during testing is not ideal)
     # def test_create_suffix_journal(self):
 
     def test_create_suffix_checksum(self):
-        Table('t_checksum_default', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().checksum())
+        """
+        Tests creating tables with the checksum suffix and the following
+        option(s):
 
-        Table('t_checksum_off', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().checksum(integrity_checking='off'))
-
-        Table('t_checksum_on', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().checksum(integrity_checking='on'))
+            integrity_checking = 'default', 'off', 'on'
+        """
+        opts = ('default', 'off', 'on')
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().checksum, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_checksum_default'))
-        assert(self.engine.has_table('t_checksum_off'))
-        assert(self.engine.has_table('t_checksum_on'))
+        self._test_tables_created(self.metadata, self.engine)
 
     def test_create_suffix_freespace(self):
-        Table('t_freespace_0', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().freespace())
+        """
+        Tests creating tables with the freespace suffix and the following
+        option(s):
 
-        Table('t_freespace_75', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().freespace(percentage=75))
-
-        Table('t_freespace_40', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().freespace(percentage=40))
+            percentage = 0, 75, 40
+        """
+        opts = (0, 75, 40)
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().freespace, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_freespace_0'))
-        assert(self.engine.has_table('t_freespace_75'))
-        assert(self.engine.has_table('t_freespace_40'))
+        self._test_tables_created(self.metadata, self.engine)
 
-    @pytest.mark.xfail(strict=True)
     def test_create_suffix_freespace_err(self):
-        Table('t_freespace_invalid', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().freespace(percentage=100))
+        """
+        Tests for specific error(s) when creating tables with the freespace suffix
+        and the following option(s):
 
-        self.metadata.create_all(checkfirst=False)
+            percentage = 100
+        """
+        with pytest.raises(Exception) as exc_info:
+            opts = (100,)
+            self._create_tables_with_suffix_opts(
+                TDCreateTablePostfix().freespace, opts, self.metadata)
+
+            self.metadata.create_all(checkfirst=False)
+
+        assert('The specified FREESPACE value is not between 0 and 75 percent' in
+            str(exc_info.value))
+        assert(not self.engine.has_table('t_freespace_100'))
 
     def test_create_suffix_mergeblockratio(self):
-        Table('t_default_mergeblockratio', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().mergeblockratio())
+        """
+        Tests creating tables with the mergeblockratio suffix and the following
+        option(s):
 
-        Table('t_mergeblockratio_0', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().mergeblockratio(integer=0))
-
-        Table('t_mergeblockratio_100', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().mergeblockratio(integer=100))
-
-        Table('t_mergeblockratio_50', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().mergeblockratio(integer=50))
+            integer = None, 0, 100, 50
+        """
+        opts = (None, 0, 100, 50)
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().mergeblockratio, opts, self.metadata)
 
         Table('t_no_mergeblockratio', self.metadata,
-            Column('c', NUMERIC),
+            Column('c', Integer),
             teradata_postfixes=TDCreateTablePostfix().no_mergeblockratio())
 
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_default_mergeblockratio'))
-        assert(self.engine.has_table('t_mergeblockratio_0'))
-        assert(self.engine.has_table('t_mergeblockratio_100'))
-        assert(self.engine.has_table('t_mergeblockratio_50'))
-        assert(self.engine.has_table('t_no_mergeblockratio'))
+        self._test_tables_created(self.metadata, self.engine)
 
-    @pytest.mark.xfail(strict=True)
     def test_create_suffix_mergeblockratio_err(self):
-        Table('t_mergeblockratio_invalid', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().freespace(percentage=101))
+        """
+        Tests for specific error(s) when creating tables with the mergeblockratio
+        suffix and the following option(s):
 
-        self.metadata.create_all(checkfirst=False)
+            integer = 101
+        """
+        with pytest.raises(Exception) as exc_info:
+            opts = (101,)
+            self._create_tables_with_suffix_opts(
+                TDCreateTablePostfix().mergeblockratio, opts, self.metadata)
+
+            self.metadata.create_all(checkfirst=False)
+
+        assert('The specified MERGEBLOCKRATIO value is invalid' in
+            str(exc_info.value))
+        assert(not self.engine.has_table('t_mergeblockratio_101'))
 
     def test_create_suffix_datablocksize(self):
-        Table('t_min_datablocksize', self.metadata,
-            Column('c', NUMERIC),
+        """
+        Tests creating tables with the datablocksize suffix and the following
+        option(s):
+
+            (datablocksize) data_block_size = None, 21248
+            min_datablocksize
+            max_datablocksize
+        """
+        opts = (None, 21248)
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().datablocksize, opts, self.metadata)
+
+        Table('t_datablocksize_min', self.metadata,
+            Column('c', Integer),
             teradata_postfixes=TDCreateTablePostfix().min_datablocksize())
 
-        Table('t_max_datablocksize', self.metadata,
-            Column('c', NUMERIC),
+        Table('t_datablocksize_max', self.metadata,
+            Column('c', Integer),
             teradata_postfixes=TDCreateTablePostfix().max_datablocksize())
 
-        Table('t_default_datablocksize', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=TDCreateTablePostfix().datablocksize())
-
-        Table('t_custom_datablocksize', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().datablocksize(data_block_size=21248))
-
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_min_datablocksize'))
-        assert(self.engine.has_table('t_max_datablocksize'))
-        assert(self.engine.has_table('t_default_datablocksize'))
-        assert(self.engine.has_table('t_custom_datablocksize'))
+        self._test_tables_created(self.metadata, self.engine)
 
-    @pytest.mark.xfail(strict=True)
     def test_create_suffix_datablocksize_err(self):
-        Table('t_datablocksize_invalid', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().datablocksize(data_block_size=1024))
+        """
+        Tests for specific error(s) when creating tables with the datablocksize
+        suffix and the following option(s):
 
-        self.metadata.create_all(checkfirst=False)
+            data_block_size = 1024
+        """
+        with pytest.raises(Exception) as exc_info:
+            opts = (1024,)
+            self._create_tables_with_suffix_opts(
+                TDCreateTablePostfix().datablocksize, opts, self.metadata)
+
+            self.metadata.create_all(checkfirst=False)
+
+        assert('The specified DATABLOCKSIZE value must be within ' \
+            'the range of 21248 and 1048319 bytes' in
+            str(exc_info.value))
+        assert(not self.engine.has_table('t_datablocksize_1024'))
 
     def test_create_suffix_blockcompression(self):
-        Table('t_blockcompression_default', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().blockcompression())
+        """
+        Tests creating tables with the blockcompression suffix and the following
+        option(s):
 
-        Table('t_blockcompression_autotemp', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().blockcompression(opt='autotemp'))
-
-        Table('t_blockcompression_manual', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().blockcompression(opt='manual'))
-
-        Table('t_blockcompression_never', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().blockcompression(opt='never'))
+            opt = 'default', 'autotemp', 'manual', 'never'
+        """
+        opts = ('default', 'autotemp', 'manual', 'never')
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().blockcompression, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_blockcompression_default'))
-        assert(self.engine.has_table('t_blockcompression_autotemp'))
-        assert(self.engine.has_table('t_blockcompression_manual'))
-        assert(self.engine.has_table('t_blockcompression_never'))
+        self._test_tables_created(self.metadata, self.engine)
+
+    def test_create_suffix_no_isolated_loading(self):
+        """
+        Tests creating tables with the no_isolated_loading suffix and the following
+        option(s):
+
+            concurrent = False, True
+        """
+        opts = (False, True)
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().with_no_isolated_loading, opts, self.metadata)
+
+        self.metadata.create_all(checkfirst=False)
+        self._test_tables_created(self.metadata, self.engine)
 
     def test_create_suffix_isolated_loading(self):
-        Table('t_no_isolated_loading', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().with_no_isolated_loading(concurrent=False))
+        """
+        Tests creating tables with the isolated_loading suffix and the following
+        (combination(s) of) option(s):
 
-        Table('t_no_isolated_loading_concurrent', self.metadata,
-            Column('c', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().with_no_isolated_loading(concurrent=True))
-
-        for_opts        = ('all', 'insert', 'none', None)
+            concurrent = False, True
+            opts       = 'all', 'insert', 'none', None
+        """
         concurrent_opts = (True, False)
-        for concurrent, opt in itertools.product(concurrent_opts, for_opts):
-            Table(
-                't_isolated_loading' +\
-                    ('_concurrent' if concurrent else '') +\
-                    ('_' + opt if opt is not None else ''),
-                self.metadata,
-                Column('c', NUMERIC),
-                teradata_postfixes=TDCreateTablePostfix().with_isolated_loading(
-                    concurrent=concurrent, opt=opt))
+        for_opts        = ('all', 'insert', 'none', None)
+        self._create_tables_with_suffix_opts(
+            TDCreateTablePostfix().with_isolated_loading,
+            itertools.product(concurrent_opts, for_opts), self.metadata)
 
         self.metadata.create_all(checkfirst=False)
-        assert(self.engine.has_table('t_no_isolated_loading'))
-        assert(self.engine.has_table('t_no_isolated_loading_concurrent'))
-        for concurrent, opt in itertools.product(concurrent_opts, for_opts):
-            # TODO figure out a better way to bypass SQL_ACTIVE_STATEMENTS limit
-            self.conn.invalidate()
-            self.conn.close()
-            self.conn = testing.db.connect()
-            assert(self.engine.has_table(
-                't_isolated_loading' +\
-                    ('_concurrent' if concurrent else '') +\
-                    ('_' + opt if opt is not None else '')))
+        self._test_tables_created(self.metadata, self.engine)
+
+
+class TestCreateTablePostDDL(testing.fixtures.TestBase):
+
+    def setup(self):
+        self.conn     = testing.db.connect()
+        self.engine   = self.conn.engine
+        self.metadata = MetaData(bind=self.engine)
+
+    def tearDown(self):
+        self.metadata.drop_all(self.engine)
+        self.conn.invalidate()
+        self.conn.close()
+
+    def _generate_table_name(self, base, opt):
+        """
+        Generates a unique table name for each base and option argument
+        with the following form:
+
+            't_base_opt1_op2 ... _optn'
+
+        Args:
+            base: The base name of the table.
+            opt:  The option passed to the table generation process. This is
+                  expected to either be a primitive or a tuple of either
+                  primitives, tuples, lists, or dicts.
+
+        Returns:
+            A unique table name of a particular form based on the
+            specified arguments.
+        """
+        return 't_' + base + '_' +\
+            ('_'.join(
+                [('_'.join([str(e).lower() for e in arg])
+                if isinstance(arg, (tuple, list, dict))
+                else str(arg).lower()) for
+                    arg in opt if arg is not None])
+            if isinstance(opt, tuple)
+            else str(opt).lower())
+
+    def _create_tables_with_post_opts(self, post, opts, metadata):
+        """
+        Create tables each with a particular TDCreateTablePost over various
+        options of the post_create (and bind each table to the passed in metadata).
+
+        Args:
+            post:     The TDCreateTablePost (function) to create the
+                      tables with.
+            opts:     The various options of the post_create to create the
+                      tables with. This is expected to either be a list of
+                      tuples or list of primitives.
+            metadata: The metadata to bind all created tables to.
+        """
+        for opt in opts:
+            Table(
+                self._generate_table_name(post.__name__, opt),
+                metadata,
+                Column('c1', NUMERIC),
+                Column('c2', DECIMAL),
+                Column('c3', VARCHAR),
+                Column('c4', CHAR),
+                Column('c5', CLOB),
+                teradata_post_create=post(*opt)
+                    if isinstance(opt, tuple)
+                    else post(opt))
+
+    def _test_tables_created(self, metadata, engine):
+        """
+        Asserts that all the tables within the passed in metadata exists on the
+        database of the specified engine and are the only tables on that
+        database.
+
+        Args:
+            metadata: A MetaData instance containing the tables to check for.
+            engine:   An Engine instance associated with a dialect and database
+                      for which the tables in the metadata are to be checked for.
+
+        Raises:
+            AssertionError: Raised when the set of tables contained in the
+                            metadata is not equal to the set of tables on
+                            the engine's associated database.
+        """
+        assert(
+            set([tablename for tablename, _ in metadata.tables.items()]) ==
+            set(engine.table_names()))
+
+    def test_create_post_no_primary_index(self):
+        """
+        Tests creating tables with the no_primary_index post_create.
+        """
+        Table('t_no_primary_index', self.metadata,
+            Column('c', Integer),
+            teradata_post_create=TDCreateTablePost().no_primary_index())
+
+        self.metadata.create_all(checkfirst=False)
+        self._test_tables_created(self.metadata, self.engine)
+
+    def test_create_post_primary_index(self):
+        """
+        Tests creating tables with the primary_index post_create and the following
+        (combination(s) of) option(s):
+
+            name   = None, 'primary_index_name'
+            unique = False, True
+            cols   = ['c1'], ['c1', 'c3']
+        """
+        name_opts   = (None, 'primary_index_name')
+        unique_opts = (False, True)
+        cols_opts   = (['c1'], ['c1', 'c3'])
+        self._create_tables_with_post_opts(
+            TDCreateTablePost().primary_index,
+            itertools.product(name_opts, unique_opts, cols_opts), self.metadata)
+
+        self.metadata.create_all(checkfirst=False)
+        self._test_tables_created(self.metadata, self.engine)
+
+    # TODO Add test(s) for primary_amp (which requires partition_by)
+    # def test_create_post_primary_amp(self):
+    #     name_opts = (None, "primary_amp_name")
+    #     cols_opts = (['c1'], ['c1', 'c3'])
+    #     self._create_tables_with_post_opts(
+    #         TDCreateTablePost().primary_amp,
+    #         itertools.product(name_opts, cols_opts), self.metadata)
+    #
+    #     self.metadata.create_all(checkfirst=False)
+    #     self._test_tables_created(self.metadata, self.engine)
+
+    # TODO Add test(s) for partition_by_col (which is currently not working due
+    #      to issues with "column partitioning not supported by system")
+    # def test_create_post_partition_by(self):
+    #     all_but_opts = (False, True)
+    #     cols_opts    = (
+    #         {'c1': True},
+    #         {'c1': True, 'c3': False, 'c5': None})
+    #     rows_opts    = (
+    #         {'d1': True},
+    #         {'d1': True, 'd3': False, 'd5': None})
+    #     const_opts   = (None, 1)
+    #
+    #     self._create_tables_with_post_opts(
+    #         TDCreateTablePost().no_primary_index().partition_by_col,
+    #         itertools.product(all_but_opts, cols_opts, rows_opts, const_opts), self.metadata)
+    #
+    #     self.metadata.create_all(checkfirst=False)
+    #     self._test_tables_created(self.metadata, self.engine)
+
+    def test_create_post_unique_index(self):
+        """
+        Tests creating tables with the unique_index post_create and the following
+        (combination(s) of) option(s):
+
+            name = None, 'unique_index_name'
+            cols = ['c2'], ['c2', 'c3']
+        """
+        name_opts = (None, 'unique_index_name')
+        cols_opts = (['c2'], ['c2', 'c3'])
+        self._create_tables_with_post_opts(
+            TDCreateTablePost().unique_index,
+            itertools.product(name_opts, cols_opts), self.metadata)
+
+        self.metadata.create_all(checkfirst=False)
+        self._test_tables_created(self.metadata, self.engine)
+
+    def test_create_post_unique_index_err(self):
+        """
+        Tests for specific error(s) when creating tables with the unique_index
+        post_create and the following (combination(s) of) option(s):
+
+            name = None
+            cols = ['c1']
+        """
+        with pytest.raises(Exception) as exc_info:
+            opts = [(None, ['c1'])]
+            self._create_tables_with_post_opts(
+                TDCreateTablePost().unique_index, opts, self.metadata)
+
+            self.metadata.create_all(checkfirst=False)
+
+        assert('Two indexes with the same columns' in str(exc_info.value))
+        assert(not self.engine.has_table('t_unique_index_c1'))

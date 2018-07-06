@@ -306,10 +306,19 @@ class TDCreateTablePostfix(TeradataOptions):
                         {'with journal table':tablename}))
 
     def before_journal(self, prefix='dual'):
+        """
+        prefix is a string taking vaues of 'no' or 'dual'
+        """
+        assert prefix in ('no', 'dual')
         res = prefix+' '+'before journal'
         return self.__class__(self._append(self.opts, {res:None}))
 
     def after_journal(self, prefix='not local'):
+        """
+        prefix is a string taking vaues of 'no', 'dual', 'local',
+        or 'not local'.
+        """
+        assert prefix in ('no', 'dual', 'local', 'not local')
         res = prefix+' '+'after journal'
         return self.__class__(self._append(self.opts, {res:None}))
 
@@ -373,6 +382,10 @@ class TDCreateTablePostfix(TeradataOptions):
         return self.__class__(self._append(self.opts, {res:None}))
 
     def with_isolated_loading(self, concurrent=False, opt=None):
+        """
+        opt is a string that takes values 'all', 'insert', 'none',
+        or None
+        """
         assert opt in ('all', 'insert', 'none', None)
         for_stmt = ' for ' + opt if opt is not None else ''
         res = 'with ' +\
@@ -454,8 +467,9 @@ class TDCreateTablePost(TeradataOptions):
         res = 'partition by( column all but' if all_but else\
                         'partition by( column'
         c = self._visit_partition_by(cols, rows)
-        if const is not None:
-            c += [{'post': ['add %s' % str(const), ')']}]
+        c += [{'post': (['add %s' % str(const)]
+            if const is not None
+            else []) + [')']}]
 
         return self.__class__(self._append(self.opts, {res: c}))
 
@@ -468,8 +482,6 @@ class TDCreateTablePost(TeradataOptions):
             c += ['column('+ k +') no auto compress'\
                             for k,v in cols.items() if v is False]
 
-            # TODO
-            # c += ['column(k)' for k,v in cols.items() if v is None]
             c += ['column('+ k +')' for k,v in cols.items() if v is None]
 
         if rows:
@@ -479,8 +491,6 @@ class TDCreateTablePost(TeradataOptions):
             c += ['row('+ k +') no auto compress'\
                             for k,v in rows.items() if v is False]
 
-            # TODO
-            # c += [k for k,v in rows.items() if v is None]
             c += ['row('+ k +')' for k,v in rows.items() if v is None]
 
         return c
@@ -492,8 +502,9 @@ class TDCreateTablePost(TeradataOptions):
         res = 'partition by( column auto compress all but' if all_but else\
                         'partition by( column auto compress'
         c = self._visit_partition_by(cols,rows)
-        if const is not None:
-              c += [{'post': ['add %s' % str(const), ')']}]
+        c += [{'post': (['add %s' % str(const)]
+            if const is not None
+            else []) + [')']}]
 
         return self.__class__(self._append(self.opts, {res: c}))
 
@@ -504,8 +515,9 @@ class TDCreateTablePost(TeradataOptions):
         res = 'partition by( column no auto compress all but' if all_but else\
                         'partition by( column no auto compression'
         c = self._visit_partition_by(cols,rows)
-        if const is not None:
-              c += [{'post': ['add %s' % str(const), ')']}]
+        c += [{'post': (['add %s' % str(const)]
+            if const is not None
+            else []) + [')']}]
 
         return self.__class__(self._append(self.opts, {res: c}))
 
@@ -518,6 +530,11 @@ class TDCreateTablePost(TeradataOptions):
         index is a sqlalchemy.sql.schema.Index object.
         """
         return self.__class__(self._append(self.opts, {res: c}))
+
+
+    def unique_index(self, name=None, cols=[]):
+        res = 'unique index ' + (name if name is not None else '')
+        return self.__class__(self._append(self.opts, {res:cols}))
 
 
 class TeradataTypeCompiler(compiler.GenericTypeCompiler):
