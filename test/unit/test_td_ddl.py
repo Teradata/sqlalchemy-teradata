@@ -4,7 +4,7 @@ from sqlalchemy.schema import CreateColumn, CreateTable, CreateIndex, CreateSche
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.types import ( VARCHAR, CHAR, CLOB, NUMERIC, DECIMAL )
-from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTablePostfix
+from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
 
 from itertools import product
 import datetime as dt
@@ -153,8 +153,8 @@ class TestCompileSuffixDDL(fixtures.TestBase):
         """
         my_table = Table('tablename', self.metadata,
             Column('columnname', NUMERIC),
-            teradata_postfixes=
-                TDCreateTablePostfix().fallback() \
+            teradata_suffixes=
+                TDCreateTableSuffix().fallback() \
                                       .log() \
                                       .with_journal_table('anothertablename') \
                                       .before_journal() \
@@ -170,9 +170,9 @@ class TestCompileSuffixDDL(fixtures.TestBase):
                                       .with_isolated_loading(True, 'all'))
         self.metadata.create_all()
 
-        postfix_ddl = self.last_compiled[
+        suffix_ddl = self.last_compiled[
             self.last_compiled.index(',')+1:self.last_compiled.index('(')]
-        assert(postfix_ddl ==
+        assert(suffix_ddl ==
             '\nfallback,' \
             '\nlog,' \
             '\nwith journal table=anothertablename,' \

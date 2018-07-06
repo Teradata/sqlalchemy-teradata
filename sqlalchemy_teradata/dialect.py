@@ -69,8 +69,8 @@ class TeradataDialect(default.DefaultDialect):
 
     construct_arguments = [
       (Table, {
-              "post_create": None,
-              "postfixes": None
+          "post_create": None,
+          "suffixes": None
        }),
 
       (Index, {

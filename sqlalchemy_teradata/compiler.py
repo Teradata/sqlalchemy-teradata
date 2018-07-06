@@ -44,86 +44,6 @@ class TeradataCompiler(compiler.SQLCompiler):
 
 class TeradataDDLCompiler(compiler.DDLCompiler):
 
-    def postfix(self, table):
-
-        """
-        This hook processes the optional keyword teradata_postfixes
-        ex.
-        from sqlalchemy_teradata.compiler import\
-                        TDCreateTablePostfix as Opts
-        t = Table( 'name', meta,
-                   ...,
-                   teradata_postfixes=Opts.
-                                      fallback().
-                                      log().
-                                      with_journal_table(t2.name)
-        CREATE TABLE name, fallback,
-        log,
-        with journal table = [database/user.]table_name(
-          ...
-        )
-        teradata_postfixes can also be a list of strings to be appended
-        in the order given.
-        """
-        post=table.dialect_kwargs['teradata_postfixes']
-
-        if isinstance(post, TDCreateTablePostfix):
-            if post.opts:
-                return ',\n' + post.compile()
-            else:
-                return post
-        elif post:
-            assert type(post) is list
-            res = ',\n ' + ',\n'.join(post)
-        else:
-            return ''
-
-    def visit_create_table(self, create):
-
-        """
-        Current workaround for https://gerrit.sqlalchemy.org/#/c/85/1
-        Once the merge gets released, delete this method entirely
-        """
-        table = create.element
-        preparer = self.dialect.identifier_preparer
-
-        text = '\nCREATE '
-        if table._prefixes:
-            text += ' '.join(table._prefixes) + ' '
-        text += 'TABLE ' + preparer.format_table(table) + ' ' +\
-                        self.postfix(table) + ' ('
-
-        separator = '\n'
-        # if only one primary key, specify it along with the column
-        first_pk = False
-        for create_column in create.columns:
-            column = create_column.element
-            try:
-                processed = self.process(create_column,
-                                         first_pk=column.primary_key
-                                         and not first_pk)
-                if processed is not None:
-                    text += separator
-                    separator = ', \n'
-                    text += '\t' + processed
-                if column.primary_key:
-                    first_pk = True
-            except exc.CompileError as ce:
-                util.raise_from_cause(
-                    exc.CompileError(
-                        util.u("(in table '%s', column '%s'): %s") %
-                        (table.description, column.name, ce.args[0])
-                    ))
-
-        const = self.create_table_constraints(
-            table, _include_foreign_key_constraints=  # noga
-                create.include_foreign_key_constraints)
-        if const:
-            text += ', \n\t' + const
-
-        text += "\n)%s\n\n" % self.post_create_table(table)
-        return text
-
     def visit_create_index(self, create, include_schema=False,
                            include_table_schema=True):
         index = create.element
@@ -145,40 +65,40 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
             )
         return text
 
-    # def create_table_suffix(self, table):
-    #     """
-    #     This hook processes the optional keyword teradata_postfixes
-    #     ex.
-    #     from sqlalchemy_teradata.compiler import\
-    #                     TDCreateTablePostfix as Opts
-    #     t = Table( 'name', meta,
-    #                ...,
-    #                teradata_postfixes=Opts.
-    #                                   fallback().
-    #                                   log().
-    #                                   with_journal_table(t2.name)
-    #
-    #     CREATE TABLE name, fallback,
-    #     log,
-    #     with journal table = [database/user.]table_name(
-    #       ...
-    #     )
-    #
-    #     teradata_postfixes can also be a list of strings to be appended
-    #     in the order given.
-    #     """
-    #     post=table.dialect_kwargs['teradata_postfixes']
-    #
-    #     if isinstance(post, TDCreateTablePostfix):
-    #         if post.opts:
-    #             return ',\n' + post.compile()
-    #         else:
-    #             return post
-    #     elif post:
-    #         assert type(post) is list
-    #         res = ',\n ' + ',\n'.join(post)
-    #     else:
-    #         return ''
+    def create_table_suffix(self, table):
+        """
+        This hook processes the optional keyword teradata_suffixes
+        ex.
+        from sqlalchemy_teradata.compiler import\
+                        TDCreateTableSuffix as Opts
+        t = Table( 'name', meta,
+                   ...,
+                   teradata_suffixes=Opts.
+                                      fallback().
+                                      log().
+                                      with_journal_table(t2.name)
+
+        CREATE TABLE name, fallback,
+        log,
+        with journal table = [database/user.]table_name(
+          ...
+        )
+
+        teradata_suffixes can also be a list of strings to be appended
+        in the order given.
+        """
+        post=table.dialect_kwargs['teradata_suffixes']
+
+        if isinstance(post, TDCreateTableSuffix):
+            if post.opts:
+                return ',\n' + post.compile()
+            else:
+                return post
+        elif post:
+            assert type(post) is list
+            res = ',\n ' + ',\n'.join(post)
+        else:
+            return ''
 
     def post_create_table(self, table):
 
@@ -266,10 +186,10 @@ class TeradataOptions(object):
             res += ' '.join( val[-1]['post'] )
         return res
 
-class TDCreateTablePostfix(TeradataOptions):
+class TDCreateTableSuffix(TeradataOptions):
     """
     A generative class for Teradata create table options
-    specified in teradata_postfixes
+    specified in teradata_suffixes
     """
     def __init__(self, opts={}):
         """

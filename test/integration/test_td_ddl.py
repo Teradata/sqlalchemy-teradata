@@ -3,7 +3,7 @@ from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
 from sqlalchemy import testing
 from sqlalchemy.engine import reflection
 from sqlalchemy.testing.plugin.pytestplugin import *
-from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTablePostfix
+from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
 
 import sqlalchemy_teradata as sqlalch_td
 import sqlalchemy.sql as sql
@@ -323,11 +323,11 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
 
     def _create_tables_with_suffix_opts(self, suffix, opts, metadata):
         """
-        Create tables each with a particular TDCreateTablePostfix over various
+        Create tables each with a particular TDCreateTableSuffix over various
         options of the suffix (and bind each table to the passed in metadata).
 
         Args:
-            suffix:   The TDCreateTablePostfix (function) to create the
+            suffix:   The TDCreateTableSuffix (function) to create the
                       tables with.
             opts:     The various options of the suffix to create the
                       tables with. This is expected to either be a list of
@@ -339,7 +339,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
                 self._generate_table_name(suffix.__name__, opt),
                 metadata,
                 Column('c', Integer),
-                teradata_postfixes=suffix(*opt)
+                teradata_suffixes=suffix(*opt)
                     if isinstance(opt, tuple)
                     else suffix(opt))
 
@@ -372,7 +372,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = (True, False)
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().fallback, opts, self.metadata)
+            TDCreateTableSuffix().fallback, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -386,7 +386,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = (True,)
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().log, opts, self.metadata)
+            TDCreateTableSuffix().log, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -401,7 +401,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         with pytest.raises(Exception) as exc_info:
             opts = (False,)
             self._create_tables_with_suffix_opts(
-                TDCreateTablePostfix().log, opts, self.metadata)
+                TDCreateTableSuffix().log, opts, self.metadata)
 
             self.metadata.create_all(checkfirst=False)
 
@@ -423,7 +423,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = ('default', 'off', 'on')
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().checksum, opts, self.metadata)
+            TDCreateTableSuffix().checksum, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -437,7 +437,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = (0, 75, 40)
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().freespace, opts, self.metadata)
+            TDCreateTableSuffix().freespace, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -452,7 +452,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         with pytest.raises(Exception) as exc_info:
             opts = (100,)
             self._create_tables_with_suffix_opts(
-                TDCreateTablePostfix().freespace, opts, self.metadata)
+                TDCreateTableSuffix().freespace, opts, self.metadata)
 
             self.metadata.create_all(checkfirst=False)
 
@@ -469,11 +469,11 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = (None, 0, 100, 50)
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().mergeblockratio, opts, self.metadata)
+            TDCreateTableSuffix().mergeblockratio, opts, self.metadata)
 
         Table('t_no_mergeblockratio', self.metadata,
             Column('c', Integer),
-            teradata_postfixes=TDCreateTablePostfix().no_mergeblockratio())
+            teradata_suffixes=TDCreateTableSuffix().no_mergeblockratio())
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -488,7 +488,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         with pytest.raises(Exception) as exc_info:
             opts = (101,)
             self._create_tables_with_suffix_opts(
-                TDCreateTablePostfix().mergeblockratio, opts, self.metadata)
+                TDCreateTableSuffix().mergeblockratio, opts, self.metadata)
 
             self.metadata.create_all(checkfirst=False)
 
@@ -507,15 +507,15 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = (None, 21248)
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().datablocksize, opts, self.metadata)
+            TDCreateTableSuffix().datablocksize, opts, self.metadata)
 
         Table('t_datablocksize_min', self.metadata,
             Column('c', Integer),
-            teradata_postfixes=TDCreateTablePostfix().min_datablocksize())
+            teradata_suffixes=TDCreateTableSuffix().min_datablocksize())
 
         Table('t_datablocksize_max', self.metadata,
             Column('c', Integer),
-            teradata_postfixes=TDCreateTablePostfix().max_datablocksize())
+            teradata_suffixes=TDCreateTableSuffix().max_datablocksize())
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -530,7 +530,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         with pytest.raises(Exception) as exc_info:
             opts = (1024,)
             self._create_tables_with_suffix_opts(
-                TDCreateTablePostfix().datablocksize, opts, self.metadata)
+                TDCreateTableSuffix().datablocksize, opts, self.metadata)
 
             self.metadata.create_all(checkfirst=False)
 
@@ -548,7 +548,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = ('default', 'autotemp', 'manual', 'never')
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().blockcompression, opts, self.metadata)
+            TDCreateTableSuffix().blockcompression, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -562,7 +562,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         """
         opts = (False, True)
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().with_no_isolated_loading, opts, self.metadata)
+            TDCreateTableSuffix().with_no_isolated_loading, opts, self.metadata)
 
         self.metadata.create_all(checkfirst=False)
         self._test_tables_created(self.metadata, self.engine)
@@ -578,7 +578,7 @@ class TestCreateSuffixDDL(testing.fixtures.TestBase):
         concurrent_opts = (True, False)
         for_opts        = ('all', 'insert', 'none', None)
         self._create_tables_with_suffix_opts(
-            TDCreateTablePostfix().with_isolated_loading,
+            TDCreateTableSuffix().with_isolated_loading,
             itertools.product(concurrent_opts, for_opts), self.metadata)
 
         self.metadata.create_all(checkfirst=False)
