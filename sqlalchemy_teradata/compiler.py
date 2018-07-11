@@ -11,6 +11,7 @@ from sqlalchemy import schema as sa_schema
 from sqlalchemy.types import Unicode
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql.expression import Select
+from sqlalchemy.sql import operators
 from sqlalchemy import exc, sql
 from sqlalchemy import create_engine
 
@@ -37,6 +38,24 @@ class TeradataCompiler(compiler.SQLCompiler):
             pre += "TOP %d " % (select._limit)
 
         return pre
+
+    def visit_binary(self, binary, override_operator=None,
+                     eager_grouping=False, **kw):
+        """
+        Handles the overriding of binary operators. Any custom binary operator
+        definition should be placed in the custom_ops dict.
+        """
+        custom_ops = {
+            operators.ne:  '<>',
+            operators.mod: 'MOD'
+        }
+
+        if binary.operator in custom_ops:
+            binary.operator = operators.custom_op(
+                opstring=custom_ops[binary.operator])
+
+        return compiler.SQLCompiler.visit_binary(
+            self, binary, override_operator, eager_grouping, **kw)
 
     def limit_clause(self, select, **kwargs):
         """Limit after SELECT is implemented in get_select_precolumns"""
