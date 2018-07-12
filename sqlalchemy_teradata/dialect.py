@@ -38,11 +38,26 @@ ischema_names = {
     'at': tdtypes.TIME,
     'tz': tdtypes.TIMESTAMP,    #Added time with timezone
 
-    #Expreimental - Binary
+    #Experimental - Binary
     'bf': sqltypes.BINARY,
     'bv': sqltypes.VARBINARY,
-    'bo': sqltypes.BLOB
-} #TODO: add the interval types and blob
+    'bo': sqltypes.BLOB,
+
+    #Interval Types
+    'dh': tdtypes.IntervalDayToHour,
+    'dm': tdtypes.IntervalDayToMinute,
+    'ds': tdtypes.IntervalDayToSecond,
+    'dy': tdtypes.IntervalDay,
+    'hm': tdtypes.IntervalHourToMinute,
+    'hr': tdtypes.IntervalHour,
+    'hs': tdtypes.IntervalHourToSecond,
+    'mi': tdtypes.IntervalMinute,
+    'mo': tdtypes.IntervalMonth,
+    'ms': tdtypes.IntervalMinuteToSecond,
+    'sc': tdtypes.IntervalSecond,
+    'ym': tdtypes.IntervalYearToMonth,
+    'yr': tdtypes.IntervalYear
+}
 
 stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
 

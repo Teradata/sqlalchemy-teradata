@@ -187,6 +187,7 @@ class TestCompileSuffixDDL(fixtures.TestBase):
             '\nblockcompression=default,' \
             '\nwith no concurrent isolated loading,' \
             '\nwith concurrent isolated loading for all ')
+            
 
 class TestCompilePostCreateDDL(fixtures.TestBase):
 
