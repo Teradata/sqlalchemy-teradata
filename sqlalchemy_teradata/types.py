@@ -14,6 +14,9 @@ class BYTEINT(sqltypes.Integer):
     """
     __visit_name__ = 'BYTEINT'
 
+    def __str__(self):
+       return 'BYTEINT'
+
 class DECIMAL(sqltypes.DECIMAL):
 
     """ Teradata Decimal/Numeric type """
