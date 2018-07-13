@@ -12,7 +12,8 @@ class BYTEINT(sqltypes.Integer):
     Teradata BYTEINT type.
     This type represents a one byte signed integer.
     """
-    __visit_name__ = 'BYTEINT'
+    def __init__(self):
+        super(sqltypes.Integer, self).__init__()
 
 class DECIMAL(sqltypes.DECIMAL):
 
