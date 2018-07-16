@@ -310,7 +310,7 @@ class _TDPeriod(types.UserDefinedType):
 
     """ Base class for the Teradata Period sqltypes."""
 
-    def __init__(self, format=None, frac_precision=None, **kwargs):
+    def __init__(self, format=None, **kwargs):
         self.format = format
 
     def bind_processor(self, dialect):
@@ -332,13 +332,13 @@ class _TDPeriod(types.UserDefinedType):
         return process
 
 
-class PeriodDate(_TDPeriod):
+class PERIOD_DATE(_TDPeriod):
 
     """ Teradata Period Date data type
         Identifies a field defining a duration with a beginning and end date
     """
 
-    __visit_name__ = 'period_date'
+    __visit_name__ = 'PERIOD_DATE'
 
     def __init__(self, format=None, **kwargs):
 
@@ -346,16 +346,16 @@ class PeriodDate(_TDPeriod):
         format: format of the date, e.g. 'yyyy-mm-dd'
 
         """
-        super(PeriodDate, self).__init__(format=format, **kwargs)
+        super(PERIOD_DATE, self).__init__(format=format, **kwargs)
 
 
-class PeriodTime(_TDPeriod):
+class PERIOD_TIME(_TDPeriod):
 
     """ Teradata Period Time data type
         Identifies a field defining a duration with a beginning and end time
     """
 
-    __visit_name__ = 'period_time'
+    __visit_name__ = 'PERIOD_TIME'
 
     def __init__(self, format=None, frac_precision=None, timezone=False, **kwargs):
 
@@ -366,18 +366,18 @@ class PeriodTime(_TDPeriod):
         timezone:       true if WITH TIME ZONE, false otherwise
 
         """
-        super(PeriodTime, self).__init__(format=format, **kwargs)
+        super(PERIOD_TIME, self).__init__(format=format, **kwargs)
         self.frac_precision = frac_precision
         self.timezone       = timezone
 
 
-class PeriodTimestamp(_TDPeriod):
+class PERIOD_TIMESTAMP(_TDPeriod):
 
     """ Teradata Period Timestamp data type
         Identifies a field defining a duration with a beginning and end timestamp
     """
 
-    __visit_name__ = 'period_timestamp'
+    __visit_name__ = 'PERIOD_TIMESTAMP'
 
     def __init__(self, format=None, frac_precision=None, timezone=False, **kwargs):
 
@@ -388,7 +388,7 @@ class PeriodTimestamp(_TDPeriod):
         timezone:       true if WITH TIME ZONE, false otherwise
 
         """
-        super(PeriodTimestamp, self).__init__(format=format, **kwargs)
+        super(PERIOD_TIMESTAMP, self).__init__(format=format, **kwargs)
         self.frac_precision = frac_precision
         self.timezone       = timezone
 

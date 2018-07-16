@@ -9,7 +9,7 @@ from test import utils
 
 import sqlalchemy_teradata as sqlalch_td
 import teradata.datatypes as td_dtypes
-import decimal, datetime 
+import decimal, datetime
 import itertools
 
 """
@@ -85,9 +85,9 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.IntervalMinute:         str,
             sqlalch_td.IntervalMinuteToSecond: str,
             sqlalch_td.IntervalSecond:         str,
-            sqlalch_td.PeriodDate:             str,
-            sqlalch_td.PeriodTime:             str,
-            sqlalch_td.PeriodTimestamp:        str
+            sqlalch_td.PERIOD_DATE:            str,
+            sqlalch_td.PERIOD_TIME:            str,
+            sqlalch_td.PERIOD_TIMESTAMP:       str
         }
 
         res = self.conn.execute(table.select())
@@ -144,9 +144,9 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.IntervalMinute:         sqlalch_td.IntervalMinute,
             sqlalch_td.IntervalMinuteToSecond: sqlalch_td.IntervalMinuteToSecond,
             sqlalch_td.IntervalSecond:         sqlalch_td.IntervalSecond,
-            sqlalch_td.PeriodDate:             sqlalch_td.PeriodDate,
-            sqlalch_td.PeriodTime:             sqlalch_td.PeriodTime,
-            sqlalch_td.PeriodTimestamp:        sqlalch_td.PeriodTimestamp
+            sqlalch_td.PERIOD_DATE:            sqlalch_td.PERIOD_DATE,
+            sqlalch_td.PERIOD_TIME:            sqlalch_td.PERIOD_TIME,
+            sqlalch_td.PERIOD_TIMESTAMP:       sqlalch_td.PERIOD_TIMESTAMP
         }
 
         reflected_cols = self.inspect.get_columns('table_test_types_sqlalch')
@@ -203,9 +203,9 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.IntervalMinute:         'INTERVAL MINUTE(2)',
             sqlalch_td.IntervalMinuteToSecond: 'INTERVAL MINUTE(2) TO SECOND(6)',
             sqlalch_td.IntervalSecond:         'INTERVAL SECOND(2,6)',
-            sqlalch_td.PeriodDate:             'PERIOD(DATE)',
-            sqlalch_td.PeriodTime:             'PERIOD(TIME(6))',
-            sqlalch_td.PeriodTimestamp:        'PERIOD(TIMESTAMP(6))'
+            sqlalch_td.PERIOD_DATE:            'PERIOD(DATE)',
+            sqlalch_td.PERIOD_TIME:            'PERIOD(TIME(6))',
+            sqlalch_td.PERIOD_TIMESTAMP:       'PERIOD(TIMESTAMP(6))'
         }
 
         parsed_attrs = utils.parse_show_table_col_attrs(
@@ -355,19 +355,19 @@ class TestTypesDDL(testing.fixtures.TestBase):
         """
         # The types to instantiate the test table with
         period_types = (
-            sqlalch_td.types.PeriodDate(
+            sqlalch_td.types.PERIOD_DATE(
                 format="'yyyy-mm-dd'"),
-            sqlalch_td.types.PeriodTimestamp(
+            sqlalch_td.types.PERIOD_TIMESTAMP(
                 frac_precision=5,
                 format="'YYYY-MM-DDBHH:MI:SS.S(5)'"),
-            sqlalch_td.types.PeriodTime(
+            sqlalch_td.types.PERIOD_TIME(
                 frac_precision=4,
                 format="'HH:MI:SS.S(4)'"),
-            sqlalch_td.types.PeriodTimestamp(
+            sqlalch_td.types.PERIOD_TIMESTAMP(
                 frac_precision=6,
                 timezone=True,
                 format="'YYYY-MM-DDBHH:MI:SS.S(6)Z'"),
-            sqlalch_td.types.PeriodTime(
+            sqlalch_td.types.PERIOD_TIME(
                 frac_precision=6,
                 timezone=True,
                 format="'HH:MI:SS.S(6)Z'")
@@ -383,13 +383,13 @@ class TestTypesDDL(testing.fixtures.TestBase):
         # The expected type of each column
         column_types = {
             'column_0': 'INTEGER()',
-            'column_1': "PeriodDate(format='yyyy-mm-dd')",
-            'column_2': "PeriodTimestamp(format='YYYY-MM-DDBHH:MI:SS.S(5)', "
+            'column_1': "PERIOD_DATE(format='yyyy-mm-dd')",
+            'column_2': "PERIOD_TIMESTAMP(format='YYYY-MM-DDBHH:MI:SS.S(5)', "
                         "frac_precision=5)",
-            'column_3': "PeriodTime(format='HH:MI:SS.S(4)', frac_precision=4)",
-            'column_4': "PeriodTimestamp(format='YYYY-MM-DDBHH:MI:SS.S(6)Z', "
+            'column_3': "PERIOD_TIME(format='HH:MI:SS.S(4)', frac_precision=4)",
+            'column_4': "PERIOD_TIMESTAMP(format='YYYY-MM-DDBHH:MI:SS.S(6)Z', "
                         "frac_precision=6, timezone=True)",
-            'column_5': "PeriodTime(format='HH:MI:SS.S(6)Z', frac_precision=6, "
+            'column_5': "PERIOD_TIME(format='HH:MI:SS.S(6)Z', frac_precision=6, "
                         "timezone=True)"
         }
 
@@ -454,13 +454,14 @@ class TestTypesDDL(testing.fixtures.TestBase):
     #     # print(repr(sqlalch_td.PeriodTime(frac_precision=6)))
     #
     #     t = Table('table_test_types_interval', self.metadata,
-    #         Column('c0', sqlalch_td.IntervalDayToMinute))
+    #         Column('c0', sqlalch_td.IntervalDayToMinute),
+    #         Column('c1', sqlalch_td.PERIOD_DATE))
     #
     #     self.metadata.create_all()
     #
     #     self.metadata.remove(t)
     #     t = Table('table_test_types_interval', self.metadata, autoload=True)
-    #     print(t.c.c0.type.__dict__)
+    #     print(t.c.c0.type)
 
 
 def test_decorator(test_fn):

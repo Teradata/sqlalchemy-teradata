@@ -59,11 +59,11 @@ ischema_names = {
     'yr': tdtypes.IntervalYear,
 
     #Period Types
-    'pd': tdtypes.PeriodDate,
-    'pt': tdtypes.PeriodTime,
-    'pz': tdtypes.PeriodTime,
-    'ps': tdtypes.PeriodTimestamp,
-    'pm': tdtypes.PeriodTimestamp
+    'pd': tdtypes.PERIOD_DATE,
+    'pt': tdtypes.PERIOD_TIME,
+    'pz': tdtypes.PERIOD_TIME,
+    'ps': tdtypes.PERIOD_TIMESTAMP,
+    'pm': tdtypes.PERIOD_TIMESTAMP
 } # TODO BLOB
 
 stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
@@ -180,13 +180,13 @@ class TeradataDialect(default.DefaultDialect):
                 # TODO what is going on with this? instantiate type with day and
                 #      second precision when reflect but use frac and prec when
                 #      compiling
-                # print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
+                print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
                 return t(day_precision=kw['prec'],second_precision=kw['scale'])
 
-            elif issubclass(t, tdtypes.PeriodDate):
+            elif issubclass(t, tdtypes.PERIOD_DATE):
                 return t(format=kw['fmt'])
 
-            elif issubclass(t, tdtypes.PeriodTime) or issubclass(t, tdtypes.PeriodTimestamp):
+            elif issubclass(t, tdtypes.PERIOD_TIME) or issubclass(t, tdtypes.PERIOD_TIMESTAMP):
                 tz = tc == 'pz' or tc == 'pm'
                 return t(format=kw['fmt'], frac_precision=kw['scale'], timezone=tz)
 
