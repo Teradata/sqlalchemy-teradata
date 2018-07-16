@@ -10,7 +10,7 @@ from .types import (TIME, TIMESTAMP, DECIMAL, CHAR, VARCHAR, CLOB, BYTEINT,
                     IntervalDay, IntervalDayToHour, IntervalDayToMinute,
                     IntervalDayToSecond, IntervalHour, IntervalHourToMinute,
                     IntervalHourToSecond, IntervalMinute, IntervalMinuteToSecond,
-                    IntervalSecond)
+                    IntervalSecond, PeriodDate, PeriodTime, PeriodTimestamp)
 from sqlalchemy.sql.sqltypes import (Integer, Interval, SmallInteger,\
                                      BigInteger, Float, Boolean,\
                                      Text, Unicode, UnicodeText,\
@@ -24,6 +24,6 @@ __all__ = (Integer, SmallInteger, BigInteger, Float, Text, Unicode,
            IntervalDay, IntervalDayToHour, IntervalDayToMinute,
            IntervalDayToSecond, IntervalHour, IntervalHourToMinute,
            IntervalHourToSecond, IntervalMinute, IntervalMinuteToSecond,
-           IntervalSecond)
+           IntervalSecond, PeriodDate, PeriodTime, PeriodTimestamp)
 
 from teradata import tdodbc

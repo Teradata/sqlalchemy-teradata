@@ -8,7 +8,8 @@ from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
 from test import utils
 
 import sqlalchemy_teradata as sqlalch_td
-import decimal, datetime
+import teradata.datatypes as td_dtypes
+import decimal, datetime 
 import itertools
 
 """
@@ -25,11 +26,11 @@ class TestTypesDDL(testing.fixtures.TestBase):
         self.inspect  = reflection.Inspector.from_engine(self.engine)
 
         self.sqlalch_types = sqlalch_td.__all__
-        self.rawsql_types  = [
+        self.rawsql_types  = (
             'CHARACTER', 'VARCHAR(50)', 'CLOB', 'BIGINT', 'SMALLINT',
             'BYTEINT', 'INTEGER', 'DECIMAL', 'FLOAT', 'NUMBER',
             'DATE', 'TIME', 'TIMESTAMP'
-        ]
+        )
 
     def tearDown(self):
         self.metadata.drop_all(self.engine)
@@ -46,7 +47,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         cursor_description (types) matches expectation. The test table is
         created through sqlalchemy schema constructs and meta.create_all().
         """
-        cols  = [Column('column_' + str(i), type)
+        cols = [Column('column_' + str(i), type)
             for i, type in enumerate(self.sqlalch_types)]
         table = Table('table_test_types_sqlalch', self.metadata, *cols)
         self.metadata.create_all(checkfirst=False)
@@ -70,6 +71,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.Text:                   str,
             sqlalch_td.Unicode:                str,
             sqlalch_td.UnicodeText:            str,
+
             sqlalch_td.IntervalYear:           str,
             sqlalch_td.IntervalYearToMonth:    str,
             sqlalch_td.IntervalMonth:          str,
@@ -82,7 +84,10 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.IntervalHourToSecond:   str,
             sqlalch_td.IntervalMinute:         str,
             sqlalch_td.IntervalMinuteToSecond: str,
-            sqlalch_td.IntervalSecond:         str
+            sqlalch_td.IntervalSecond:         str,
+            sqlalch_td.PeriodDate:             str,
+            sqlalch_td.PeriodTime:             str,
+            sqlalch_td.PeriodTimestamp:        str
         }
 
         res = self.conn.execute(table.select())
@@ -125,6 +130,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.VARCHAR:                sqlalch_td.VARCHAR,
             sqlalch_td.Unicode:                sqlalch_td.VARCHAR,
             sqlalch_td.UnicodeText:            sqlalch_td.CLOB,
+
             sqlalch_td.IntervalYear:           sqlalch_td.IntervalYear,
             sqlalch_td.IntervalYearToMonth:    sqlalch_td.IntervalYearToMonth,
             sqlalch_td.IntervalMonth:          sqlalch_td.IntervalMonth,
@@ -137,7 +143,10 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.IntervalHourToSecond:   sqlalch_td.IntervalHourToSecond,
             sqlalch_td.IntervalMinute:         sqlalch_td.IntervalMinute,
             sqlalch_td.IntervalMinuteToSecond: sqlalch_td.IntervalMinuteToSecond,
-            sqlalch_td.IntervalSecond:         sqlalch_td.IntervalSecond
+            sqlalch_td.IntervalSecond:         sqlalch_td.IntervalSecond,
+            sqlalch_td.PeriodDate:             sqlalch_td.PeriodDate,
+            sqlalch_td.PeriodTime:             sqlalch_td.PeriodTime,
+            sqlalch_td.PeriodTimestamp:        sqlalch_td.PeriodTimestamp
         }
 
         reflected_cols = self.inspect.get_columns('table_test_types_sqlalch')
@@ -180,6 +189,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.Text:                   'CLOB',
             sqlalch_td.Unicode:                'VARCHAR',
             sqlalch_td.UnicodeText:            'CLOB',
+
             sqlalch_td.IntervalYear:           'INTERVAL YEAR(2)',
             sqlalch_td.IntervalYearToMonth:    'INTERVAL YEAR(2) TO MONTH',
             sqlalch_td.IntervalMonth:          'INTERVAL MONTH(2)',
@@ -192,7 +202,10 @@ class TestTypesDDL(testing.fixtures.TestBase):
             sqlalch_td.IntervalHourToSecond:   'INTERVAL HOUR(2) TO SECOND(6)',
             sqlalch_td.IntervalMinute:         'INTERVAL MINUTE(2)',
             sqlalch_td.IntervalMinuteToSecond: 'INTERVAL MINUTE(2) TO SECOND(6)',
-            sqlalch_td.IntervalSecond:         'INTERVAL SECOND(2,6)'
+            sqlalch_td.IntervalSecond:         'INTERVAL SECOND(2,6)',
+            sqlalch_td.PeriodDate:             'PERIOD(DATE)',
+            sqlalch_td.PeriodTime:             'PERIOD(TIME(6))',
+            sqlalch_td.PeriodTimestamp:        'PERIOD(TIMESTAMP(6))'
         }
 
         parsed_attrs = utils.parse_show_table_col_attrs(
@@ -324,6 +337,130 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         for col, attr in parsed_attrs.items():
             assert(type_map[col_to_type[col]] in attr)
+
+    def test_types_period(self):
+        """
+        Tests the correctness of the Teradata Period type(s) implementation.
+
+        This is done by first creating a test table with columns corresponding
+        to each of the available Period types (and their attribute
+        configurations). Subsequently, the following tests are carried out:
+
+        (1) Inspect the column types by reflection to see that each column is
+            of the expected type and possesses the expected attributes.
+
+        (2) Insert some data into each of the columns in the form of both
+            strings and teradata Period objects. This data is then queried
+            back and checked against its expected string representation.
+        """
+        # The types to instantiate the test table with
+        period_types = (
+            sqlalch_td.types.PeriodDate(
+                format="'yyyy-mm-dd'"),
+            sqlalch_td.types.PeriodTimestamp(
+                frac_precision=5,
+                format="'YYYY-MM-DDBHH:MI:SS.S(5)'"),
+            sqlalch_td.types.PeriodTime(
+                frac_precision=4,
+                format="'HH:MI:SS.S(4)'"),
+            sqlalch_td.types.PeriodTimestamp(
+                frac_precision=6,
+                timezone=True,
+                format="'YYYY-MM-DDBHH:MI:SS.S(6)Z'"),
+            sqlalch_td.types.PeriodTime(
+                frac_precision=6,
+                timezone=True,
+                format="'HH:MI:SS.S(6)Z'")
+        )
+
+        # Create the test table with the above Period types
+        cols = [Column('column_' + str(i + 1), type)
+            for i, type in enumerate(period_types)]
+        table = Table('table_test_types_period', self.metadata,
+            Column('column_0', Integer), *cols)
+        self.metadata.create_all(checkfirst=False)
+
+        # The expected type of each column
+        column_types = {
+            'column_0': 'INTEGER()',
+            'column_1': "PeriodDate(format='yyyy-mm-dd')",
+            'column_2': "PeriodTimestamp(format='YYYY-MM-DDBHH:MI:SS.S(5)', "
+                        "frac_precision=5)",
+            'column_3': "PeriodTime(format='HH:MI:SS.S(4)', frac_precision=4)",
+            'column_4': "PeriodTimestamp(format='YYYY-MM-DDBHH:MI:SS.S(6)Z', "
+                        "frac_precision=6, timezone=True)",
+            'column_5': "PeriodTime(format='HH:MI:SS.S(6)Z', frac_precision=6, "
+                        "timezone=True)"
+        }
+
+        # Test that each reflected column type has all the attributes it
+        # was instantiated with
+        reflected_cols = self.inspect.get_columns('table_test_types_period')
+        for col in reflected_cols:
+            assert(repr(col['type']) == column_types[col['name']])
+
+        # Insert two rows of data into the test table
+        self.conn.execute(table.insert(),
+            {'column_0': 0,
+             'column_1': "('2010-03-01', "
+                         "'2010-08-01')",
+             'column_2': "('2010-04-21 08:00:00.12345', "
+                         "'2010-04-21 17:00:00.12345')",
+             'column_3': "('08:00:00.1234', "
+                         "'17:00:00.1234')",
+             'column_4': "('2010-04-21 08:00:00.000000+08:00', "
+                         "'2010-04-21 17:00:00.000000-08:00')",
+             'column_5': "('08:00:00.000000+08:00', "
+                         "'17:00:00.000000-08:00')"},
+            {'column_0': 1,
+             'column_1': td_dtypes.Period(
+                datetime.date(2007, 5, 12),
+                datetime.date(2018, 7, 13)),
+             'column_2': td_dtypes.Period(
+                datetime.datetime(2007, 5, 12, 5, 12, 32),
+                datetime.datetime(2018, 7, 13, 5, 32, 54)),
+             'column_3': td_dtypes.Period(
+                datetime.time(5, 12, 32),
+                datetime.time(5, 32, 54)),
+             'column_4': td_dtypes.Period(
+                datetime.datetime(2007, 5, 12, 5, 12, 32),
+                datetime.datetime(2018, 7, 13, 5, 32, 54)),
+             'column_5': td_dtypes.Period(
+                datetime.time(5, 12, 32),
+                datetime.time(5, 32, 54))})
+        res = self.conn.execute(table.select().order_by(table.c.column_0))
+
+        # Test that both insertion by strings and Period objects are correctly
+        # handled by checking that the string representation of each row that
+        # is queried back is as expected
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['0', "
+            "\"('2010-03-01', '2010-08-01')\", "
+            "\"('2010-04-21 08:00:00.123450', '2010-04-21 17:00:00.123450')\", "
+            "\"('08:00:00.123400', '17:00:00.123400')\", "
+            "\"('2010-04-21 08:00:00+08:00', '2010-04-21 17:00:00-08:00')\", "
+            "\"('08:00:00+08:00', '17:00:00-08:00')\"]")
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['1', "
+            "\"('2007-05-12', '2018-07-13')\", "
+            "\"('2007-05-12 05:12:32', '2018-07-13 05:32:54')\", "
+            "\"('05:12:32', '05:32:54')\", "
+            "\"('2007-05-12 05:12:32+00:00', '2018-07-13 05:32:54+00:00')\", "
+            "\"('05:12:32+00:00', '05:32:54+00:00')\"]")
+
+    # TODO Test for the Teradata Interval type(s)
+    # def test_types_interval(self):
+    #     # print(repr(sqlalch_td.IntervalDayToMinute(precision=4)))
+    #     # print(repr(sqlalch_td.PeriodTime(frac_precision=6)))
+    #
+    #     t = Table('table_test_types_interval', self.metadata,
+    #         Column('c0', sqlalch_td.IntervalDayToMinute))
+    #
+    #     self.metadata.create_all()
+    #
+    #     self.metadata.remove(t)
+    #     t = Table('table_test_types_interval', self.metadata, autoload=True)
+    #     print(t.c.c0.type.__dict__)
 
 
 def test_decorator(test_fn):
