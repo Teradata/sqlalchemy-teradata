@@ -338,6 +338,43 @@ class TestTypesDDL(testing.fixtures.TestBase):
         for col, attr in parsed_attrs.items():
             assert(type_map[col_to_type[col]] in attr)
 
+    def test_types_interval(self):
+        """
+        Tests the correctness of the Teradata Interval type(s) implementation.
+
+        This is done by first creating a test table with columns corresponding
+        to each of the available Interval types (each with a certain attribute
+        configuration). Then, the column types are inspected by reflection
+        to ensure that each column is of the expected type and possesses the
+        expected attributes.
+        """
+
+        col_types = {
+            'column_0':  sqlalch_td.IntervalYear(precision=4),
+            'column_1':  sqlalch_td.IntervalYearToMonth(precision=3),
+            'column_2':  sqlalch_td.IntervalMonth(precision=4),
+            'column_3':  sqlalch_td.IntervalDay(precision=4),
+            'column_4':  sqlalch_td.IntervalDayToHour(precision=3),
+            'column_5':  sqlalch_td.IntervalDayToMinute(precision=2),
+            'column_6':  sqlalch_td.IntervalDayToSecond(precision=1, frac_precision=6),
+            'column_7':  sqlalch_td.IntervalHour(precision=4),
+            'column_8':  sqlalch_td.IntervalHourToMinute(precision=3),
+            'column_9':  sqlalch_td.IntervalHourToSecond(precision=2, frac_precision=5),
+            'column_10': sqlalch_td.IntervalMinute(precision=4),
+            'column_11': sqlalch_td.IntervalMinuteToSecond(precision=3, frac_precision=4),
+            'column_12': sqlalch_td.IntervalSecond(precision=4, frac_precision=3)
+        }
+
+        cols  = [Column(name, type.copy()) for name, type in col_types.items()]
+        table = Table('table_test_types_interval', self.metadata, *cols)
+        self.metadata.create_all(checkfirst=False)
+
+        reflected_cols = self.inspect.get_columns('table_test_types_interval')
+        for col in reflected_cols:
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(col_types[col['name']].__dict__))
+
     def test_types_period(self):
         """
         Tests the correctness of the Teradata Period type(s) implementation.
@@ -434,21 +471,6 @@ class TestTypesDDL(testing.fixtures.TestBase):
             "\"('05:12:32', '05:32:54')\", "
             "\"('2007-05-12 05:12:32+00:00', '2018-07-13 05:32:54+00:00')\", "
             "\"('05:12:32+00:00', '05:32:54+00:00')\"]")
-
-    # TODO Test for the Teradata Interval type(s)
-    # def test_types_interval(self):
-    #     # print(repr(sqlalch_td.IntervalDayToMinute(precision=4)))
-    #     # print(repr(sqlalch_td.PeriodTime(frac_precision=6)))
-    #
-    #     t = Table('table_test_types_interval', self.metadata,
-    #         Column('c0', sqlalch_td.IntervalDayToMinute),
-    #         Column('c1', sqlalch_td.PERIOD_DATE))
-    #
-    #     self.metadata.create_all()
-    #
-    #     self.metadata.remove(t)
-    #     t = Table('table_test_types_interval', self.metadata, autoload=True)
-    #     print(t.c.c0.type)
 
 
 def test_decorator(test_fn):

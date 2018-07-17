@@ -177,11 +177,7 @@ class TeradataDialect(default.DefaultDialect):
                 return t(precision=prec,timezone=tz)
 
             elif issubclass(t, sqltypes.Interval):
-                # TODO what is going on with this? instantiate type with day and
-                #      second precision when reflect but use frac and prec when
-                #      compiling
-                # print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
-                return t(day_precision=kw['prec'],second_precision=kw['scale'])
+                return t(precision=kw['prec'], frac_precision=kw['scale'])
 
             elif issubclass(t, tdtypes.PERIOD_DATE):
                 return t(format=kw['fmt'])
