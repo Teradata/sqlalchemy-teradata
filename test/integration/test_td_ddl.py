@@ -353,51 +353,38 @@ class TestTypesDDL(testing.fixtures.TestBase):
             strings and teradata Period objects. This data is then queried
             back and checked against its expected string representation.
         """
-        # The types to instantiate the test table with
-        period_types = (
-            sqlalch_td.types.PERIOD_DATE(
-                format="'yyyy-mm-dd'"),
-            sqlalch_td.types.PERIOD_TIMESTAMP(
-                frac_precision=5,
-                format="'YYYY-MM-DDBHH:MI:SS.S(5)'"),
-            sqlalch_td.types.PERIOD_TIME(
-                frac_precision=4,
-                format="'HH:MI:SS.S(4)'"),
-            sqlalch_td.types.PERIOD_TIMESTAMP(
-                frac_precision=6,
-                timezone=True,
-                format="'YYYY-MM-DDBHH:MI:SS.S(6)Z'"),
-            sqlalch_td.types.PERIOD_TIME(
-                frac_precision=6,
-                timezone=True,
-                format="'HH:MI:SS.S(6)Z'")
-        )
+
+        col_types = {
+            'column_0': sql.sqltypes.INTEGER(),
+            'column_1': sqlalch_td.PERIOD_DATE(
+                            format='yyyy-mm-dd'),
+            'column_2': sqlalch_td.PERIOD_TIMESTAMP(
+                            frac_precision=5,
+                            format='YYYY-MM-DDBHH:MI:SS.S(5)'),
+            'column_3': sqlalch_td.PERIOD_TIME(
+                            frac_precision=4,
+                            format='HH:MI:SS.S(4)'),
+            'column_4': sqlalch_td.PERIOD_TIMESTAMP(
+                            frac_precision=6,
+                            timezone=True,
+                            format='YYYY-MM-DDBHH:MI:SS.S(6)Z'),
+            'column_5': sqlalch_td.PERIOD_TIME(
+                            frac_precision=6,
+                            timezone=True,
+                            format='HH:MI:SS.S(6)Z')
+        }
 
         # Create the test table with the above Period types
-        cols = [Column('column_' + str(i + 1), type)
-            for i, type in enumerate(period_types)]
-        table = Table('table_test_types_period', self.metadata,
-            Column('column_0', Integer), *cols)
+        cols = [Column('column_' + str(i), type)
+            for i, type in enumerate(col_types.values())]
+        table = Table('table_test_types_period', self.metadata, *cols)
         self.metadata.create_all(checkfirst=False)
-
-        # The expected type of each column
-        column_types = {
-            'column_0': 'INTEGER()',
-            'column_1': "PERIOD_DATE(format='yyyy-mm-dd')",
-            'column_2': "PERIOD_TIMESTAMP(format='YYYY-MM-DDBHH:MI:SS.S(5)', "
-                        "frac_precision=5)",
-            'column_3': "PERIOD_TIME(format='HH:MI:SS.S(4)', frac_precision=4)",
-            'column_4': "PERIOD_TIMESTAMP(format='YYYY-MM-DDBHH:MI:SS.S(6)Z', "
-                        "frac_precision=6, timezone=True)",
-            'column_5': "PERIOD_TIME(format='HH:MI:SS.S(6)Z', frac_precision=6, "
-                        "timezone=True)"
-        }
 
         # Test that each reflected column type has all the attributes it
         # was instantiated with
         reflected_cols = self.inspect.get_columns('table_test_types_period')
         for col in reflected_cols:
-            assert(repr(col['type']) == column_types[col['name']])
+            assert(repr(col['type']) == repr(col_types[col['name']]))
 
         # Insert two rows of data into the test table
         self.conn.execute(table.insert(),

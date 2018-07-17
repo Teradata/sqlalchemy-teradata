@@ -560,7 +560,7 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_PERIOD_DATE(self, type_, **kw):
         return 'PERIOD(DATE)' +\
-            (' FORMAT ' + type_.format if type_.format is not None else '')
+            (" FORMAT '" + type_.format + "'" if type_.format is not None else '')
 
     def visit_PERIOD_TIME(self, type_, **kw):
         return 'PERIOD(TIME{}{})'.format(
@@ -568,7 +568,7 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
                     if type_.frac_precision is not None
                     else '',
                 ' WITH TIME ZONE' if type_.timezone else '') +\
-            (' FORMAT ' + type_.format if type_.format is not None else '')
+            (" FORMAT '" + type_.format + "'" if type_.format is not None else '')
 
     def visit_PERIOD_TIMESTAMP(self, type_, **kw):
         return 'PERIOD(TIMESTAMP{}{})'.format(
@@ -576,7 +576,7 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
                     if type_.frac_precision is not None
                     else '',
                 ' WITH TIME ZONE' if type_.timezone else '') +\
-            (' FORMAT ' + type_.format if type_.format is not None else '')
+            (" FORMAT '" + type_.format + "'" if type_.format is not None else '')
 
     def visit_TIME(self, type_, **kw):
         tz = ' WITH TIME ZONE' if type_.timezone else ''

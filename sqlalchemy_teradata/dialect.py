@@ -180,7 +180,7 @@ class TeradataDialect(default.DefaultDialect):
                 # TODO what is going on with this? instantiate type with day and
                 #      second precision when reflect but use frac and prec when
                 #      compiling
-                print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
+                # print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
                 return t(day_precision=kw['prec'],second_precision=kw['scale'])
 
             elif issubclass(t, tdtypes.PERIOD_DATE):
