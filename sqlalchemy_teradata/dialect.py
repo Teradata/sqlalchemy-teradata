@@ -56,8 +56,15 @@ ischema_names = {
     'ms': tdtypes.IntervalMinuteToSecond,
     'sc': tdtypes.IntervalSecond,
     'ym': tdtypes.IntervalYearToMonth,
-    'yr': tdtypes.IntervalYear
-}
+    'yr': tdtypes.IntervalYear,
+
+    #Period Types
+    'pd': tdtypes.PERIOD_DATE,
+    'pt': tdtypes.PERIOD_TIME,
+    'pz': tdtypes.PERIOD_TIME,
+    'ps': tdtypes.PERIOD_TIMESTAMP,
+    'pm': tdtypes.PERIOD_TIMESTAMP
+} # TODO BLOB
 
 stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
 
@@ -135,14 +142,16 @@ class TeradataDialect(default.DefaultDialect):
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchone()
         return res is not None
 
+    # TODO Refactor this whole thing
     def _resolve_type(self, t, **kw):
         """
         Resolve types for String, Numeric, Date/Time, etc. columns
         """
-        t = self.normalize_name(t)
-        if t in ischema_names:
-            #print(t,ischema_names[t])
-            t = ischema_names[t]
+        tc = self.normalize_name(t)
+        # print(tc, kw)
+        if tc in ischema_names:
+            # print(t,ischema_names[t])
+            t = ischema_names[tc]
 
             if issubclass(t, sqltypes.String):
                 return t(length=kw['length']/2 if kw['chartype']=='UNICODE' else kw['length'],\
@@ -168,7 +177,18 @@ class TeradataDialect(default.DefaultDialect):
                 return t(precision=prec,timezone=tz)
 
             elif issubclass(t, sqltypes.Interval):
+                # TODO what is going on with this? instantiate type with day and
+                #      second precision when reflect but use frac and prec when
+                #      compiling
+                # print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
                 return t(day_precision=kw['prec'],second_precision=kw['scale'])
+
+            elif issubclass(t, tdtypes.PERIOD_DATE):
+                return t(format=kw['fmt'])
+
+            elif issubclass(t, tdtypes.PERIOD_TIME) or issubclass(t, tdtypes.PERIOD_TIMESTAMP):
+                tz = tc == 'pz' or tc == 'pm'
+                return t(format=kw['fmt'], frac_precision=kw['scale'], timezone=tz)
 
             else:
                 return t() # For types like Integer, ByteInt
