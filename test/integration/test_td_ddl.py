@@ -2,6 +2,7 @@ from sqlalchemy import *
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
 from sqlalchemy import testing
 from sqlalchemy import sql
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.engine import reflection
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
@@ -54,23 +55,24 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqlalch_td.Integer:                   decimal.Decimal,
-            sqlalch_td.SmallInteger:              decimal.Decimal,
-            sqlalch_td.BigInteger:                decimal.Decimal,
-            sqlalch_td.Float:                     decimal.Decimal,
-            sqlalch_td.Boolean:                   decimal.Decimal,
+            sqltypes.Integer:                     decimal.Decimal,
+            sqltypes.SmallInteger:                decimal.Decimal,
+            sqltypes.BigInteger:                  decimal.Decimal,
+            sqltypes.Float:                       decimal.Decimal,
+            sqltypes.Boolean:                     decimal.Decimal,
+            sqltypes.Interval:                    datetime.datetime,
+            sqltypes.Date:                        datetime.date,
+            sqltypes.Text:                        str,
+            sqltypes.Unicode:                     str,
+            sqltypes.UnicodeText:                 str,
+
             sqlalch_td.DECIMAL:                   decimal.Decimal,
             sqlalch_td.BYTEINT:                   decimal.Decimal,
-            sqlalch_td.DATE:                      datetime.date,
             sqlalch_td.TIME:                      datetime.time,
             sqlalch_td.TIMESTAMP:                 datetime.datetime,
-            sqlalch_td.Interval:                  datetime.datetime,
             sqlalch_td.CHAR:                      str,
             sqlalch_td.VARCHAR:                   str,
             sqlalch_td.CLOB:                      str,
-            sqlalch_td.Text:                      str,
-            sqlalch_td.Unicode:                   str,
-            sqlalch_td.UnicodeText:               str,
             sqlalch_td.INTERVAL_YEAR:             str,
             sqlalch_td.INTERVAL_YEAR_TO_MONTH:    str,
             sqlalch_td.INTERVAL_MONTH:            str,
@@ -112,23 +114,24 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqlalch_td.Integer:                   sql.sqltypes.INTEGER,
-            sqlalch_td.SmallInteger:              sql.sqltypes.SMALLINT,
-            sqlalch_td.BigInteger:                sql.sqltypes.BIGINT,
-            sqlalch_td.Float:                     sql.sqltypes.FLOAT,
-            sqlalch_td.Boolean:                   sqlalch_td.BYTEINT,
+            sqltypes.Integer:                     sqltypes.INTEGER,
+            sqltypes.SmallInteger:                sqltypes.SMALLINT,
+            sqltypes.BigInteger:                  sqltypes.BIGINT,
+            sqltypes.Float:                       sqltypes.FLOAT,
+            sqltypes.Date:                        sqltypes.DATE,
+            sqltypes.Boolean:                     sqlalch_td.BYTEINT,
+            sqltypes.Interval:                    sqlalch_td.TIMESTAMP,
+            sqltypes.Text:                        sqlalch_td.CLOB,
+            sqltypes.Unicode:                     sqlalch_td.VARCHAR,
+            sqltypes.UnicodeText:                 sqlalch_td.CLOB,
+
             sqlalch_td.DECIMAL:                   sqlalch_td.DECIMAL,
             sqlalch_td.BYTEINT:                   sqlalch_td.BYTEINT,
-            sqlalch_td.DATE:                      sqlalch_td.DATE,
             sqlalch_td.TIME:                      sqlalch_td.TIME,
             sqlalch_td.TIMESTAMP:                 sqlalch_td.TIMESTAMP,
-            sqlalch_td.Interval:                  sqlalch_td.TIMESTAMP,
             sqlalch_td.CHAR:                      sqlalch_td.CHAR,
             sqlalch_td.CLOB:                      sqlalch_td.CLOB,
-            sqlalch_td.Text:                      sqlalch_td.CLOB,
             sqlalch_td.VARCHAR:                   sqlalch_td.VARCHAR,
-            sqlalch_td.Unicode:                   sqlalch_td.VARCHAR,
-            sqlalch_td.UnicodeText:               sqlalch_td.CLOB,
             sqlalch_td.INTERVAL_YEAR:             sqlalch_td.INTERVAL_YEAR,
             sqlalch_td.INTERVAL_YEAR_TO_MONTH:    sqlalch_td.INTERVAL_YEAR_TO_MONTH,
             sqlalch_td.INTERVAL_MONTH:            sqlalch_td.INTERVAL_MONTH,
@@ -170,23 +173,24 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqlalch_td.Integer:                   'INTEGER',
-            sqlalch_td.SmallInteger:              'SMALLINT',
-            sqlalch_td.BigInteger:                'BIGINT',
-            sqlalch_td.Float:                     'FLOAT',
-            sqlalch_td.Boolean:                   'BYTEINT',
+            sqltypes.Integer:                     'INTEGER',
+            sqltypes.SmallInteger:                'SMALLINT',
+            sqltypes.BigInteger:                  'BIGINT',
+            sqltypes.Float:                       'FLOAT',
+            sqltypes.Boolean:                     'BYTEINT',
+            sqltypes.Interval:                    'TIMESTAMP',
+            sqltypes.Date:                        'DATE',
+            sqltypes.Text:                        'CLOB',
+            sqltypes.Unicode:                     'VARCHAR',
+            sqltypes.UnicodeText:                 'CLOB',
+
             sqlalch_td.DECIMAL:                   'DECIMAL',
             sqlalch_td.BYTEINT:                   'BYTEINT',
-            sqlalch_td.DATE:                      'DATE',
             sqlalch_td.TIME:                      'TIME',
             sqlalch_td.TIMESTAMP:                 'TIMESTAMP',
-            sqlalch_td.Interval:                  'TIMESTAMP',
             sqlalch_td.CHAR:                      'CHAR',
             sqlalch_td.VARCHAR:                   'VARCHAR',
             sqlalch_td.CLOB:                      'CLOB',
-            sqlalch_td.Text:                      'CLOB',
-            sqlalch_td.Unicode:                   'VARCHAR',
-            sqlalch_td.UnicodeText:               'CLOB',
             sqlalch_td.INTERVAL_YEAR:             'INTERVAL YEAR(2)',
             sqlalch_td.INTERVAL_YEAR_TO_MONTH:    'INTERVAL YEAR(2) TO MONTH',
             sqlalch_td.INTERVAL_MONTH:            'INTERVAL MONTH(2)',
@@ -272,19 +276,19 @@ class TestTypesDDL(testing.fixtures.TestBase):
         col_to_type = {'column_' + str(i): type for
             i, type in enumerate(self.rawsql_types)}
         type_map    = {
-            'BIGINT':       sql.sqltypes.BIGINT,
-            'SMALLINT':     sql.sqltypes.SMALLINT,
+            'BIGINT':       sqltypes.BIGINT,
+            'SMALLINT':     sqltypes.SMALLINT,
+            'INTEGER':      sqltypes.INTEGER,
+            'FLOAT':        sqltypes.FLOAT,
+            'DATE':         sqltypes.DATE,
             'BYTEINT':      sqlalch_td.BYTEINT,
-            'INTEGER':      sql.sqltypes.INTEGER,
             'DECIMAL':      sqlalch_td.DECIMAL,
-            'FLOAT':        sql.sqltypes.FLOAT,
-            'NUMBER':       sqlalch_td.types.NUMERIC,
-            'DATE':         sqlalch_td.DATE,
             'TIME':         sqlalch_td.TIME,
             'TIMESTAMP':    sqlalch_td.TIMESTAMP,
             'CHARACTER':    sqlalch_td.CHAR,
             'VARCHAR(50)':  sqlalch_td.VARCHAR,
-            'CLOB':         sqlalch_td.CLOB
+            'CLOB':         sqlalch_td.CLOB,
+            'NUMBER':       sqlalch_td.types.NUMERIC
         }
 
         reflected_cols = self.inspect.get_columns('table_test_types_rawsql')
@@ -389,7 +393,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         """
 
         col_types = {
-            'column_0': sql.sqltypes.INTEGER(),
+            'column_0': sqltypes.INTEGER(),
             'column_1': sqlalch_td.PERIOD_DATE(
                             format='yyyy-mm-dd'),
             'column_2': sqlalch_td.PERIOD_TIMESTAMP(

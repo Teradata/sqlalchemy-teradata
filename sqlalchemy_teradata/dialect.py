@@ -36,7 +36,7 @@ ischema_names = {
     'ts': tdtypes.TIMESTAMP,
     'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
     'at': tdtypes.TIME,
-    'tz': tdtypes.TIMESTAMP,    #Added time with timezone
+    'tz': tdtypes.TIME,         #Added time with timezone
 
     #Experimental - Binary
     'bf': sqltypes.BINARY,
