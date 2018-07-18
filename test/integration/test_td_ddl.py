@@ -387,6 +387,15 @@ class TestTypesDDL(testing.fixtures.TestBase):
             assert(str(col['type'].__dict__) ==
                 str(col_types[col['name']].__dict__))
 
+        # # print(td_dtypes.Interval(years=2, months=2))
+        # self.conn.execute(table.insert(),
+        #     # {'column_1': td_dtypes.Interval(years=0, months=5)})
+        #     {'column_1': '2-02-17'})
+        # res = self.conn.execute(table.select().order_by(table.c.column_0))
+        #
+        # for row in res:
+        #     print(type(row))
+
     def test_types_period(self):
         """
         Tests the correctness of the Teradata Period type(s) implementation.

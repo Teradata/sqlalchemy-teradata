@@ -176,7 +176,7 @@ class TeradataDialect(default.DefaultDialect):
                 #prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
                 return t(precision=prec,timezone=tz)
 
-            elif issubclass(t, sqltypes.Interval):
+            elif issubclass(t, tdtypes._TDInterval):
                 return t(precision=kw['prec'], frac_precision=kw['scale'])
 
             elif issubclass(t, tdtypes.PERIOD_DATE):

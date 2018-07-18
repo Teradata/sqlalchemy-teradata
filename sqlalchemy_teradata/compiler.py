@@ -501,62 +501,62 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_INTERVAL_YEAR(self, type_, **kw):
         return 'INTERVAL YEAR{}'.format(
-            '('+str(type_.year_precision)+')' if type_.year_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_YEAR_TO_MONTH(self, type_, **kw):
         return 'INTERVAL YEAR{} TO MONTH'.format(
-            '('+str(type_.year_precision)+')' if type_.year_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_MONTH(self, type_, **kw):
         return 'INTERVAL MONTH{}'.format(
-            '('+str(type_.month_precision)+')' if type_.month_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_DAY(self, type_, **kw):
         return 'INTERVAL DAY{}'.format(
-            '('+str(type_.day_precision)+')' if type_.day_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_DAY_TO_HOUR(self, type_, **kw):
         return 'INTERVAL DAY{} TO HOUR'.format(
-            '('+str(type_.day_precision)+')' if type_.day_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_DAY_TO_MINUTE(self, type_, **kw):
         return 'INTERVAL DAY{} TO MINUTE'.format(
-            '('+str(type_.day_precision)+')' if type_.day_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_DAY_TO_SECOND(self, type_, **kw):
         return 'INTERVAL DAY{} TO SECOND{}'.format(
-            '('+str(type_.day_precision)+')' if type_.day_precision else '',
+            '('+str(type_.precision)+')' if type_.precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None  else '')
 
     def visit_INTERVAL_HOUR(self, type_, **kw):
         return 'INTERVAL HOUR{}'.format(
-            '('+str(type_.hour_precision)+')' if type_.hour_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_HOUR_TO_MINUTE(self, type_, **kw):
         return 'INTERVAL HOUR{} TO MINUTE'.format(
-            '('+str(type_.hour_precision)+')' if type_.hour_precision else '')
+            '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_HOUR_TO_SECOND(self, type_, **kw):
         return 'INTERVAL HOUR{} TO SECOND{}'.format(
-            '('+str(type_.hour_precision)+')' if type_.hour_precision else '',
+            '('+str(type_.precision)+')' if type_.precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
 
     def visit_INTERVAL_MINUTE(self, type_, **kw):
         return 'INTERVAL MINUTE{}'.format(
-              '('+str(type_.minute_precision)+')' if type_.minute_precision else '')
+              '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_INTERVAL_MINUTE_TO_SECOND(self, type_, **kw):
         return 'INTERVAL MINUTE{} TO SECOND{}'.format(
-            '('+str(type_.minute_precision)+')' if type_.minute_precision else '',
+            '('+str(type_.precision)+')' if type_.precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
 
     def visit_INTERVAL_SECOND(self, type_, **kw):
-        if type_.frac_precision is not None and type_.second_precision:
+        if type_.frac_precision is not None and type_.precision:
           return 'INTERVAL SECOND{}'.format(
-              '('+str(type_.second_precision)+', '+str(type_.frac_precision)+')')
+              '('+str(type_.precision)+', '+str(type_.frac_precision)+')')
         else:
           return 'INTERVAL SECOND{}'.format(
-              '('+str(type_.second_precision)+')' if type_.second_precision else '')
+              '('+str(type_.precision)+')' if type_.precision else '')
 
     def visit_PERIOD_DATE(self, type_, **kw):
         return 'PERIOD(DATE)' +\
