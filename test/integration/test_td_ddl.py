@@ -26,7 +26,18 @@ class TestTypesDDL(testing.fixtures.TestBase):
         self.metadata = MetaData(bind=self.engine)
         self.inspect  = reflection.Inspector.from_engine(self.engine)
 
-        self.sqlalch_types = sqlalch_td.__all__
+        self.sqlalch_types = sqlalch_td.__all__ + (
+            sqltypes.Integer,
+            sqltypes.SmallInteger,
+            sqltypes.BigInteger,
+            sqltypes.Float,
+            sqltypes.Date,
+            sqltypes.Boolean,
+            sqltypes.Interval,
+            sqltypes.Text,
+            sqltypes.Unicode,
+            sqltypes.UnicodeText
+        )
         self.rawsql_types  = (
             'CHARACTER', 'VARCHAR(50)', 'CLOB', 'BIGINT', 'SMALLINT',
             'BYTEINT', 'INTEGER', 'DECIMAL', 'FLOAT', 'NUMBER',
