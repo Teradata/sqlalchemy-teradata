@@ -55,19 +55,20 @@ URI specified in ``setup.cfg`` under the ``[db]`` heading.
 
 You can override the dburi you would like the tests to run against:
 
-.. code:: 
+.. code::
 
-    py.test --dburi:teradata://user:pw@host
+    py.test --dburi:teradata://user:pw@host (Python 2.7.x)
+    py.test --dburi teradata://user:pw@host (Python 3.x)
 
 To view the databases aliased in setup.cfg:
 
-.. code:: 
+.. code::
 
     py.test --dbs all
 
 To run the tests against an aliased database URI in setup.cfg:
 
-.. code:: 
+.. code::
 
     py.test --db default
     py.test --db teradata
