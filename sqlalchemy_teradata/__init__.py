@@ -6,11 +6,11 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from .types import (TIME, TIMESTAMP, DECIMAL, CHAR, VARCHAR, CLOB, BYTEINT,
-                    IntervalYear, IntervalYearToMonth, IntervalMonth,
-                    IntervalDay, IntervalDayToHour, IntervalDayToMinute,
-                    IntervalDayToSecond, IntervalHour, IntervalHourToMinute,
-                    IntervalHourToSecond, IntervalMinute, IntervalMinuteToSecond,
-                    IntervalSecond, PERIOD_DATE, PERIOD_TIME, PERIOD_TIMESTAMP)
+                    INTERVAL_YEAR, INTERVAL_YEAR_TO_MONTH, INTERVAL_MONTH,
+                    INTERVAL_DAY, INTERVAL_DAY_TO_HOUR, INTERVAL_DAY_TO_MINUTE,
+                    INTERVAL_DAY_TO_SECOND, INTERVAL_HOUR, INTERVAL_HOUR_TO_MINUTE,
+                    INTERVAL_HOUR_TO_SECOND, INTERVAL_MINUTE, INTERVAL_MINUTE_TO_SECOND,
+                    INTERVAL_SECOND, PERIOD_DATE, PERIOD_TIME, PERIOD_TIMESTAMP)
 from sqlalchemy.sql.sqltypes import (Integer, Interval, SmallInteger,\
                                      BigInteger, Float, Boolean,\
                                      Text, Unicode, UnicodeText,\
@@ -20,10 +20,10 @@ __version__ = '0.1.0'
 __all__ = (Integer, SmallInteger, BigInteger, Float, Text, Unicode,
            UnicodeText, Interval, Boolean,
            DATE, TIME, TIMESTAMP, DECIMAL, CHAR, VARCHAR, CLOB, BYTEINT,
-           IntervalYear, IntervalYearToMonth, IntervalMonth,
-           IntervalDay, IntervalDayToHour, IntervalDayToMinute,
-           IntervalDayToSecond, IntervalHour, IntervalHourToMinute,
-           IntervalHourToSecond, IntervalMinute, IntervalMinuteToSecond,
-           IntervalSecond, PERIOD_DATE, PERIOD_TIME, PERIOD_TIMESTAMP)
+           INTERVAL_YEAR, INTERVAL_YEAR_TO_MONTH, INTERVAL_MONTH,
+           INTERVAL_DAY, INTERVAL_DAY_TO_HOUR, INTERVAL_DAY_TO_MINUTE,
+           INTERVAL_DAY_TO_SECOND, INTERVAL_HOUR, INTERVAL_HOUR_TO_MINUTE,
+           INTERVAL_HOUR_TO_SECOND, INTERVAL_MINUTE, INTERVAL_MINUTE_TO_SECOND,
+           INTERVAL_SECOND, PERIOD_DATE, PERIOD_TIME, PERIOD_TIMESTAMP)
 
 from teradata import tdodbc

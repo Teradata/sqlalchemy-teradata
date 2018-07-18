@@ -499,58 +499,58 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
     def visit_unicode_text(self, type_, **kw):
         return self.visit_CLOB(type_, charset='UNICODE', **kw)
 
-    def visit_interval_year(self, type_, **kw):
+    def visit_INTERVAL_YEAR(self, type_, **kw):
         return 'INTERVAL YEAR{}'.format(
             '('+str(type_.year_precision)+')' if type_.year_precision else '')
 
-    def visit_interval_year_to_month(self, type_, **kw):
+    def visit_INTERVAL_YEAR_TO_MONTH(self, type_, **kw):
         return 'INTERVAL YEAR{} TO MONTH'.format(
             '('+str(type_.year_precision)+')' if type_.year_precision else '')
 
-    def visit_interval_month(self, type_, **kw):
+    def visit_INTERVAL_MONTH(self, type_, **kw):
         return 'INTERVAL MONTH{}'.format(
             '('+str(type_.month_precision)+')' if type_.month_precision else '')
 
-    def visit_interval_day(self, type_, **kw):
+    def visit_INTERVAL_DAY(self, type_, **kw):
         return 'INTERVAL DAY{}'.format(
             '('+str(type_.day_precision)+')' if type_.day_precision else '')
 
-    def visit_interval_day_to_hour(self, type_, **kw):
+    def visit_INTERVAL_DAY_TO_HOUR(self, type_, **kw):
         return 'INTERVAL DAY{} TO HOUR'.format(
             '('+str(type_.day_precision)+')' if type_.day_precision else '')
 
-    def visit_interval_day_to_minute(self, type_, **kw):
+    def visit_INTERVAL_DAY_TO_MINUTE(self, type_, **kw):
         return 'INTERVAL DAY{} TO MINUTE'.format(
             '('+str(type_.day_precision)+')' if type_.day_precision else '')
 
-    def visit_interval_day_to_second(self, type_, **kw):
+    def visit_INTERVAL_DAY_TO_SECOND(self, type_, **kw):
         return 'INTERVAL DAY{} TO SECOND{}'.format(
             '('+str(type_.day_precision)+')' if type_.day_precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None  else '')
 
-    def visit_interval_hour(self, type_, **kw):
+    def visit_INTERVAL_HOUR(self, type_, **kw):
         return 'INTERVAL HOUR{}'.format(
             '('+str(type_.hour_precision)+')' if type_.hour_precision else '')
 
-    def visit_interval_hour_to_minute(self, type_, **kw):
+    def visit_INTERVAL_HOUR_TO_MINUTE(self, type_, **kw):
         return 'INTERVAL HOUR{} TO MINUTE'.format(
             '('+str(type_.hour_precision)+')' if type_.hour_precision else '')
 
-    def visit_interval_hour_to_second(self, type_, **kw):
+    def visit_INTERVAL_HOUR_TO_SECOND(self, type_, **kw):
         return 'INTERVAL HOUR{} TO SECOND{}'.format(
             '('+str(type_.hour_precision)+')' if type_.hour_precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
 
-    def visit_interval_minute(self, type_, **kw):
+    def visit_INTERVAL_MINUTE(self, type_, **kw):
         return 'INTERVAL MINUTE{}'.format(
               '('+str(type_.minute_precision)+')' if type_.minute_precision else '')
 
-    def visit_interval_minute_to_second(self, type_, **kw):
+    def visit_INTERVAL_MINUTE_TO_SECOND(self, type_, **kw):
         return 'INTERVAL MINUTE{} TO SECOND{}'.format(
             '('+str(type_.minute_precision)+')' if type_.minute_precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
 
-    def visit_interval_second(self, type_, **kw):
+    def visit_INTERVAL_SECOND(self, type_, **kw):
         if type_.frac_precision is not None and type_.second_precision:
           return 'INTERVAL SECOND{}'.format(
               '('+str(type_.second_precision)+', '+str(type_.frac_precision)+')')
