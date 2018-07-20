@@ -489,8 +489,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         }
 
         # Create the test table with the above Period types
-        cols = [Column('column_' + str(i), type)
-            for i, type in enumerate(col_types.values())]
+        cols  = [Column(name, type) for name, type in col_types.items()]
         table = Table('table_test_types_period', self.metadata, *cols)
         self.metadata.create_all(checkfirst=False)
 
@@ -498,7 +497,9 @@ class TestTypesDDL(testing.fixtures.TestBase):
         # was instantiated with
         reflected_cols = self.inspect.get_columns('table_test_types_period')
         for col in reflected_cols:
-            assert(repr(col['type']) == repr(col_types[col['name']]))
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(col_types[col['name']].__dict__))
 
         # Insert two rows of data into the test table
         self.conn.execute(table.insert(),
