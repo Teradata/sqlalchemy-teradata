@@ -6,6 +6,9 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy.sql import sqltypes
+from sqlalchemy import types
+
+import teradata.datatypes as td_dtypes
 
 class BYTEINT(sqltypes.Integer):
     """
@@ -31,7 +34,7 @@ class DECIMAL(sqltypes.DECIMAL):
 class NUMERIC(sqltypes.NUMERIC):
 
     def __init__(self, precision=5, scale=0, **kw):
-            super(NUMERIC, self).__init__(precision=precision, scale=scale, **kw)
+        super(NUMERIC, self).__init__(precision=precision, scale=scale, **kw)
 
 
 class TIME(sqltypes.TIME):
@@ -99,209 +102,297 @@ class IntervalYear(_TDInterval, sqltypes.Interval):
 
 class IntervalYearToMonth(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Year To Month data type
-       Identifies a field defining a period of time in years and months
-   """
+    """ Teradata Interval Year To Month data type
+        Identifies a field defining a period of time in years and months
+    """
 
-   __visit_name__ = 'interval_year_to_month'
+    __visit_name__ = 'interval_year_to_month'
 
-   def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kwargs):
 
-       """
+        """
         precision: permitted range of digits for year ranging from 1 to 4
 
-       """
-       return super(IntervalYearToMonth, self).__init__(precision=precision, **kwargs)
+        """
+        return super(IntervalYearToMonth, self).__init__(precision=precision, **kwargs)
 
 class IntervalMonth(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Month data type
-       Identifies a field defining a period of time in months
-   """
+    """ Teradata Interval Month data type
+        Identifies a field defining a period of time in months
+    """
 
-   __visit_name__ = 'interval_month'
+    __visit_name__ = 'interval_month'
 
-   def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kwargs):
 
-       """
-         precision: permitted range of digits for month ranging from 1 to 4
+        """
+        precision: permitted range of digits for month ranging from 1 to 4
 
-       """
-       return super(IntervalMonth, self).__init__(precision=precision, **kwargs)
+        """
+        return super(IntervalMonth, self).__init__(precision=precision, **kwargs)
 
 class IntervalDay(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Day data type
-       Identifies a field defining a period of time in days
-   """
+    """ Teradata Interval Day data type
+        Identifies a field defining a period of time in days
+    """
 
-   __visit_name__ = 'interval_day'
+    __visit_name__ = 'interval_day'
 
-   def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kwargs):
 
-       """
-         precision: permitted range of digits for day ranging from 1 to 4
+        """
+        precision: permitted range of digits for day ranging from 1 to 4
 
-       """
-       return super(IntervalDay, self).__init__(precision=precision, **kwargs)
+        """
+        return super(IntervalDay, self).__init__(precision=precision, **kwargs)
 
 
 class IntervalDayToHour(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Day To Hour data type
-       Identifies a field defining a period of time in days and hours
-   """
-   __visit_name__ = 'interval_day_to_hour'
+    """ Teradata Interval Day To Hour data type
+        Identifies a field defining a period of time in days and hours
+    """
 
-   def __init__(self, precision=None, **kwargs):
+    __visit_name__ = 'interval_day_to_hour'
 
-       """
-         precision: permitted range of digits for day ranging from 1 to 4
+    def __init__(self, precision=None, **kwargs):
 
-       """
+        """
+        precision: permitted range of digits for day ranging from 1 to 4
 
-       return super(IntervalDayToHour, self).__init__(precision=precision, **kwargs)
+        """
+        return super(IntervalDayToHour, self).__init__(precision=precision, **kwargs)
 
 class IntervalDayToMinute(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Day To Minute data type
+    """ Teradata Interval Day To Minute data type
        Identifies a field defining a period of time in days, hours, and minutes
-   """
+    """
 
-   __visit_name__= 'interval_day_to_minute'
+    __visit_name__= 'interval_day_to_minute'
 
-   def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kwargs):
 
-       """
+        """
         precision: permitted range of digits for day ranging from 1 to 4
 
-       """
-
-       return super(IntervalDayToMinute, self).__init__(precision=precision, **kwargs)
+        """
+        return super(IntervalDayToMinute, self).__init__(precision=precision, **kwargs)
 
 class IntervalDayToSecond(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Day To Second data type
-       Identifies a field during a period of time in days, hours, minutes, and seconds
-   """
+    """ Teradata Interval Day To Second data type
+        Identifies a field during a period of time in days, hours, minutes, and seconds
+    """
 
-   __visit_name__='interval_day_to_second'
+    __visit_name__='interval_day_to_second'
 
-   def __init__(self, precision=None, frac_precision=None, **kwargs):
+    def __init__(self, precision=None, frac_precision=None, **kwargs):
 
-       """
-         precision: permitted range of digits for day ranging from 1 to 4
-         frac_precision: fracional_seconds_precision ranging from 0 to 6
+        """
+        precision: permitted range of digits for day ranging from 1 to 4
+        frac_precision: fracional_seconds_precision ranging from 0 to 6
 
-       """
-       return super(IntervalDayToSecond, self).__init__(precision=precision,
+        """
+        return super(IntervalDayToSecond, self).__init__(precision=precision,
                                                          frac_precision=frac_precision,
                                                          **kwargs)
 
 class IntervalHour(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Hour data type
-       Identifies a field defining a period of time in hours
-   """
+    """ Teradata Interval Hour data type
+        Identifies a field defining a period of time in hours
+    """
 
-   __visit_name__='interval_hour'
+    __visit_name__='interval_hour'
 
-   def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kwargs):
 
-       """
-         precision: permitted range of digits for hour ranging from 1 to 4
+        """
+        precision: permitted range of digits for hour ranging from 1 to 4
 
-       """
-       return super(IntervalHour, self).__init__(precision=precision, **kwargs)
+        """
+        return super(IntervalHour, self).__init__(precision=precision, **kwargs)
 
 class IntervalHourToMinute(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Hour To Minute data type
-       Identifies a field defining a period of time in hours and minutes
-   """
+    """ Teradata Interval Hour To Minute data type
+        Identifies a field defining a period of time in hours and minutes
+    """
 
-   __visit_name__='interval_hour_to_minute'
+    __visit_name__='interval_hour_to_minute'
 
-   def __init__(self, precision=None, **kwargs):
+    def __init__(self, precision=None, **kwargs):
 
-       """
-         precision: permitted range of digits for month ranging from 1 to 4
+        """
+        precision: permitted range of digits for month ranging from 1 to 4
 
-       """
-       return super(IntervalHourToMinute, self).__init__(precision=precision,
+        """
+        return super(IntervalHourToMinute, self).__init__(precision=precision,
                                                           **kwargs)
 
 class IntervalHourToSecond(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Hour To Second data type
-       Identifies a field defining a period of time in hours, minutes, and seconds
-   """
+    """ Teradata Interval Hour To Second data type
+        Identifies a field defining a period of time in hours, minutes, and seconds
+    """
 
-   __visit_name__='interval_hour_to_second'
+    __visit_name__='interval_hour_to_second'
 
-   def __init__(self, precision=None, frac_precision=None, **kwargs):
+    def __init__(self, precision=None, frac_precision=None, **kwargs):
 
-       """
-         precision: permitted range of digits for hour ranging from 1 to 4
-         frac_precision: fracional_seconds_precision ranging from 0 to 6
+        """
+        precision: permitted range of digits for hour ranging from 1 to 4
+        frac_precision: fracional_seconds_precision ranging from 0 to 6
 
-       """
-       return super(IntervalHourToSecond, self).__init__(precision=precision,
-                                                        frac_precision=frac_precision,
-                                                        **kwargs)
-
-class IntervalMinute(_TDInterval, sqltypes.Interval):
-
-   """ Teradata Interval Minute type
-       Identifies a field defining a period of time in minutes
-   """
-
-   __visit_name__='interval_minute'
-
-   def __init__(self, precision=None, **kwargs):
-
-       """
-         precision: permitted range of digits for minute ranging from 1 to 4
-
-       """
-       return super(IntervalMinute, self).__init__(precision=precision, **kwargs)
-
-class IntervalMinuteToSecond(_TDInterval, sqltypes.Interval):
-
-   """ Teradata Interval Minute To Second data type
-       Identifies a field defining a period of time in minutes and seconds
-   """
-
-   __visit_name__='interval_minute_to_second'
-
-   def __init__(self, precision=None, frac_precision=None, **kwargs):
-
-       """
-         precision: permitted range of digits for minute ranging from 1 to 4
-         frac_precision: fracional_seconds_precision ranging from 0 to 6
-
-       """
-       return super(IntervalMinuteToSecond, self).__init__(precision=precision,
+        """
+        return super(IntervalHourToSecond, self).__init__(precision=precision,
                                                           frac_precision=frac_precision,
                                                           **kwargs)
 
+class IntervalMinute(_TDInterval, sqltypes.Interval):
+
+    """ Teradata Interval Minute type
+        Identifies a field defining a period of time in minutes
+    """
+
+    __visit_name__='interval_minute'
+
+    def __init__(self, precision=None, **kwargs):
+
+        """
+        precision: permitted range of digits for minute ranging from 1 to 4
+
+        """
+        return super(IntervalMinute, self).__init__(precision=precision, **kwargs)
+
+class IntervalMinuteToSecond(_TDInterval, sqltypes.Interval):
+
+    """ Teradata Interval Minute To Second data type
+        Identifies a field defining a period of time in minutes and seconds
+    """
+
+    __visit_name__='interval_minute_to_second'
+
+    def __init__(self, precision=None, frac_precision=None, **kwargs):
+
+        """
+        precision: permitted range of digits for minute ranging from 1 to 4
+        frac_precision: fracional_seconds_precision ranging from 0 to 6
+
+        """
+        return super(IntervalMinuteToSecond, self).__init__(precision=precision,
+                                                            frac_precision=frac_precision,
+                                                            **kwargs)
+
 class IntervalSecond(_TDInterval, sqltypes.Interval):
 
-   """ Teradata Interval Second data type
-       Identifies a field defining a period of time in seconds
-   """
+    """ Teradata Interval Second data type
+        Identifies a field defining a period of time in seconds
+    """
 
-   __visit_name__ = 'interval_second'
+    __visit_name__ = 'interval_second'
 
-   def __init__(self, precision=None, frac_precision=None, **kwargs):
+    def __init__(self, precision=None, frac_precision=None, **kwargs):
 
-       """
+        """
         precision: permitted range of digits for second ranging from 1 to 4
         frac_precision: fractional_seconds_precision ranging from 0 to 6
 
-       """
-       return super(IntervalSecond, self).__init__(precision=precision,
-                                                  frac_precision=frac_precision, **kwargs)
+        """
+        return super(IntervalSecond, self).__init__(precision=precision,
+                                                    frac_precision=frac_precision,
+                                                    **kwargs)
+
+
+class _TDPeriod(types.UserDefinedType):
+
+    """ Base class for the Teradata Period sqltypes."""
+
+    def __init__(self, format=None, **kwargs):
+        self.format = format
+
+    def bind_processor(self, dialect):
+
+        """
+        Processes the Period value from SQLAlchemy to DB
+        """
+        def process(value):
+            return value
+        return process
+
+    def result_processor(self, dialect, coltype):
+
+        """
+        Processes the Period value from DB to SQLAlchemy
+        """
+        def process(value):
+            return value
+        return process
+
+
+class PERIOD_DATE(_TDPeriod):
+
+    """ Teradata Period Date data type
+        Identifies a field defining a duration with a beginning and end date
+    """
+
+    __visit_name__ = 'PERIOD_DATE'
+
+    def __init__(self, format=None, **kwargs):
+
+        """
+        format: format of the date, e.g. 'yyyy-mm-dd'
+
+        """
+        super(PERIOD_DATE, self).__init__(format=format, **kwargs)
+
+
+class PERIOD_TIME(_TDPeriod):
+
+    """ Teradata Period Time data type
+        Identifies a field defining a duration with a beginning and end time
+    """
+
+    __visit_name__ = 'PERIOD_TIME'
+
+    def __init__(self, format=None, frac_precision=None, timezone=False, **kwargs):
+
+        """
+        format:         format of the time, e.g. 'HH:MI:SS.S(6)' and
+                        'HH:MI:SS.S(6)Z' (with timezone)
+        frac_precision: fractional_seconds_precision ranging from 0 to 6
+        timezone:       true if WITH TIME ZONE, false otherwise
+
+        """
+        super(PERIOD_TIME, self).__init__(format=format, **kwargs)
+        self.frac_precision = frac_precision
+        self.timezone       = timezone
+
+
+class PERIOD_TIMESTAMP(_TDPeriod):
+
+    """ Teradata Period Timestamp data type
+        Identifies a field defining a duration with a beginning and end timestamp
+    """
+
+    __visit_name__ = 'PERIOD_TIMESTAMP'
+
+    def __init__(self, format=None, frac_precision=None, timezone=False, **kwargs):
+
+        """
+        format:         format of the timestamp, e.g. 'YYYY-MM-DDBHH:MI:SS.S(6)'
+                        and 'YYYY-MM-DDBHH:MI:SS.S(6)Z' (with timezone)
+        frac_precision: fractional_seconds_precision ranging from 0 to 6
+        timezone:       true if WITH TIME ZONE, false otherwise
+
+        """
+        super(PERIOD_TIMESTAMP, self).__init__(format=format, **kwargs)
+        self.frac_precision = frac_precision
+        self.timezone       = timezone
+
 
 class CHAR(sqltypes.CHAR):
 
