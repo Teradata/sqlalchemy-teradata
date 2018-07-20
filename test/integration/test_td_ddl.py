@@ -356,25 +356,30 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         This is done by first creating a test table with columns corresponding
         to each of the available Interval types (each with a certain attribute
-        configuration). Then, the column types are inspected by reflection
-        to ensure that each column is of the expected type and possesses the
-        expected attributes.
+        configuration). Subsequently, the following tests are carried out:
+
+        (1) Inspect the column types by reflection to see that each column is
+            of the expected type and possesses the expected attributes.
+
+        (2) Insert some data into each of the columns in the form of strings,
+            timedelta, and Teradata Interval objects. This data is then queried
+            back and checked against its expected string representation.
         """
 
         col_types = {
-            'column_0':  sqlalch_td.INTERVAL_YEAR(precision=4),
+            'column_0':  sqlalch_td.INTERVAL_YEAR(precision=3),
             'column_1':  sqlalch_td.INTERVAL_YEAR_TO_MONTH(precision=3),
-            'column_2':  sqlalch_td.INTERVAL_MONTH(precision=4),
-            'column_3':  sqlalch_td.INTERVAL_DAY(precision=4),
+            'column_2':  sqlalch_td.INTERVAL_MONTH(precision=3),
+            'column_3':  sqlalch_td.INTERVAL_DAY(precision=3),
             'column_4':  sqlalch_td.INTERVAL_DAY_TO_HOUR(precision=3),
-            'column_5':  sqlalch_td.INTERVAL_DAY_TO_MINUTE(precision=2),
-            'column_6':  sqlalch_td.INTERVAL_DAY_TO_SECOND(precision=1, frac_precision=6),
-            'column_7':  sqlalch_td.INTERVAL_HOUR(precision=4),
+            'column_5':  sqlalch_td.INTERVAL_DAY_TO_MINUTE(precision=3),
+            'column_6':  sqlalch_td.INTERVAL_DAY_TO_SECOND(precision=3, frac_precision=5),
+            'column_7':  sqlalch_td.INTERVAL_HOUR(precision=3),
             'column_8':  sqlalch_td.INTERVAL_HOUR_TO_MINUTE(precision=3),
-            'column_9':  sqlalch_td.INTERVAL_HOUR_TO_SECOND(precision=2, frac_precision=5),
-            'column_10': sqlalch_td.INTERVAL_MINUTE(precision=4),
-            'column_11': sqlalch_td.INTERVAL_MINUTE_TO_SECOND(precision=3, frac_precision=4),
-            'column_12': sqlalch_td.INTERVAL_SECOND(precision=4, frac_precision=3)
+            'column_9':  sqlalch_td.INTERVAL_HOUR_TO_SECOND(precision=3, frac_precision=5),
+            'column_10': sqlalch_td.INTERVAL_MINUTE(precision=3),
+            'column_11': sqlalch_td.INTERVAL_MINUTE_TO_SECOND(precision=3, frac_precision=5),
+            'column_12': sqlalch_td.INTERVAL_SECOND(precision=3, frac_precision=5)
         }
 
         cols  = [Column(name, type.copy()) for name, type in col_types.items()]
@@ -387,14 +392,58 @@ class TestTypesDDL(testing.fixtures.TestBase):
             assert(str(col['type'].__dict__) ==
                 str(col_types[col['name']].__dict__))
 
-        # # print(td_dtypes.Interval(years=2, months=2))
-        # self.conn.execute(table.insert(),
-        #     # {'column_1': td_dtypes.Interval(years=0, months=5)})
-        #     {'column_1': '2-02-17'})
-        # res = self.conn.execute(table.select().order_by(table.c.column_0))
-        #
-        # for row in res:
-        #     print(type(row))
+        self.conn.execute(table.insert(),
+            {'column_0':  None,
+             'column_1':  None,
+             'column_2':  None,
+             'column_3':  datetime.timedelta(days=365),
+             'column_4':  datetime.timedelta(days=365, hours=24),
+             'column_5':  datetime.timedelta(days=365, minutes=60),
+             'column_6':  datetime.timedelta(days=365, seconds=60.123),
+             'column_7':  datetime.timedelta(hours=24),
+             'column_8':  datetime.timedelta(hours=24, minutes=60),
+             'column_9':  datetime.timedelta(hours=24, seconds=60.123),
+             'column_10': datetime.timedelta(minutes=60),
+             'column_11': datetime.timedelta(minutes=60, seconds=60.123),
+             'column_12': datetime.timedelta(seconds=60.12345)},
+            {'column_0':  '10',
+             'column_1':  '10-10',
+             'column_2':  '10',
+             'column_3':  '10',
+             'column_4':  '10 10',
+             'column_5':  '10 00:10',
+             'column_6':  '10 00:00:10.10',
+             'column_7':  '10',
+             'column_8':  '10:10',
+             'column_9':  '10:00:10.10',
+             'column_10': '10',
+             'column_11': '10:10.10',
+             'column_12': '10.10'},
+            {'column_0':  td_dtypes.Interval(years=20),
+             'column_1':  td_dtypes.Interval(years=20, months=20),
+             'column_2':  td_dtypes.Interval(months=20),
+             'column_3':  td_dtypes.Interval(days=20),
+             'column_4':  td_dtypes.Interval(days=20, hours=20),
+             'column_5':  td_dtypes.Interval(days=20, minutes=20),
+             'column_6':  td_dtypes.Interval(days=20, seconds=20.20),
+             'column_7':  td_dtypes.Interval(hours=20),
+             'column_8':  td_dtypes.Interval(hours=20, minutes=20),
+             'column_9':  td_dtypes.Interval(hours=20, seconds=20.20),
+             'column_10': td_dtypes.Interval(minutes=20),
+             'column_11': td_dtypes.Interval(minutes=20, seconds=20.20),
+             'column_12': td_dtypes.Interval(seconds=20.20)})
+        res = self.conn.execute(table.select().order_by(table.c.column_0))
+
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['None', 'None', 'None', '365', '366 00', '365 01:00', "
+            "'365 00:01:00.123', '24', '25:00', '24:01:00.123', '60', "
+            "'61:00.123', '60.12345']")
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['10', '10-10', '10', '10', '10 10', '10 00:10', '10 00:00:10.1', "
+            "'10', '10:10', '10:00:10.1', '10', '10:10.1', '10.1']")
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['20', '21-08', '20', '20', '20 20', '20 00:20', '20 00:00:20.2', "
+            "'20', '20:20', '20:00:20.2', '20', '20:20.2', '20.2']")
 
     def test_types_period(self):
         """

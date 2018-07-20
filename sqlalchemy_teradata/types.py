@@ -9,6 +9,7 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy import types
 
 import teradata.datatypes as td_dtypes
+import datetime
 
 class BYTEINT(sqltypes.Integer):
     """
@@ -82,7 +83,7 @@ class _TDInterval(types.UserDefinedType):
     def bind_processor(self, dialect):
 
         """
-        Processes the Period value from SQLAlchemy to DB
+        Processes the Interval value from SQLAlchemy to DB
         """
         def process(value):
             return value
@@ -91,7 +92,7 @@ class _TDInterval(types.UserDefinedType):
     def result_processor(self, dialect, coltype):
 
         """
-        Processes the Period value from DB to SQLAlchemy
+        Processes the Interval value from DB to SQLAlchemy
         """
         def process(value):
             return value
@@ -161,6 +162,17 @@ class INTERVAL_DAY(_TDInterval):
         """
         super(INTERVAL_DAY, self).__init__(precision=precision)
 
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL DAY
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                value = td_dtypes.Interval(days=value.days)
+            return value
+        return process
 
 class INTERVAL_DAY_TO_HOUR(_TDInterval):
 
@@ -178,6 +190,20 @@ class INTERVAL_DAY_TO_HOUR(_TDInterval):
         """
         super(INTERVAL_DAY_TO_HOUR, self).__init__(precision=precision)
 
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL DAY
+        TO HOUR
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                hours = int(value.seconds / 3600)
+                value = td_dtypes.Interval(days=value.days, hours=hours)
+            return value
+        return process
+
 class INTERVAL_DAY_TO_MINUTE(_TDInterval):
 
     """ Teradata Interval Day To Minute data type
@@ -193,6 +219,20 @@ class INTERVAL_DAY_TO_MINUTE(_TDInterval):
 
         """
         super(INTERVAL_DAY_TO_MINUTE, self).__init__(precision=precision)
+
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL DAY
+        TO MINUTE
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                minutes = int(value.seconds / 60)
+                value   = td_dtypes.Interval(days=value.days, minutes=minutes)
+            return value
+        return process
 
 class INTERVAL_DAY_TO_SECOND(_TDInterval):
 
@@ -212,6 +252,20 @@ class INTERVAL_DAY_TO_SECOND(_TDInterval):
         super(INTERVAL_DAY_TO_SECOND, self).__init__(precision=precision,
                                                      frac_precision=frac_precision)
 
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL DAY
+        TO SECOND
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                seconds = value.seconds + value.microseconds / 1000000
+                value   = td_dtypes.Interval(days=value.days, seconds=seconds)
+            return value
+        return process
+
 class INTERVAL_HOUR(_TDInterval):
 
     """ Teradata Interval Hour data type
@@ -228,6 +282,19 @@ class INTERVAL_HOUR(_TDInterval):
         """
         super(INTERVAL_HOUR, self).__init__(precision=precision)
 
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL HOUR
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                hours = int(value.total_seconds() / 3600)
+                value = td_dtypes.Interval(hours=hours)
+            return value
+        return process
+
 class INTERVAL_HOUR_TO_MINUTE(_TDInterval):
 
     """ Teradata Interval Hour To Minute data type
@@ -243,6 +310,22 @@ class INTERVAL_HOUR_TO_MINUTE(_TDInterval):
 
         """
         super(INTERVAL_HOUR_TO_MINUTE, self).__init__(precision=precision)
+
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL HOUR
+        TO MINUTE
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                hours, seconds = divmod(value.total_seconds(), 3600)
+                hours   = int(hours)
+                minutes = int(seconds / 60)
+                value   = td_dtypes.Interval(hours=hours, minutes=minutes)
+            return value
+        return process
 
 class INTERVAL_HOUR_TO_SECOND(_TDInterval):
 
@@ -262,6 +345,22 @@ class INTERVAL_HOUR_TO_SECOND(_TDInterval):
         super(INTERVAL_HOUR_TO_SECOND, self).__init__(precision=precision,
                                                       frac_precision=frac_precision)
 
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL HOUR
+        TO SECOND
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                hours, seconds = divmod(value.total_seconds(), 3600)
+                hours   = int(hours)
+                seconds = int(seconds) + value.microseconds / 1000000
+                value   = td_dtypes.Interval(hours=hours, seconds=seconds)
+            return value
+        return process
+
 class INTERVAL_MINUTE(_TDInterval):
 
     """ Teradata Interval Minute type
@@ -277,6 +376,19 @@ class INTERVAL_MINUTE(_TDInterval):
 
         """
         super(INTERVAL_MINUTE, self).__init__(precision=precision)
+
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL MINUTE
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                minutes = int(value.total_seconds() / 60)
+                value = td_dtypes.Interval(minutes=minutes)
+            return value
+        return process
 
 class INTERVAL_MINUTE_TO_SECOND(_TDInterval):
 
@@ -296,6 +408,22 @@ class INTERVAL_MINUTE_TO_SECOND(_TDInterval):
         super(INTERVAL_MINUTE_TO_SECOND, self).__init__(precision=precision,
                                                         frac_precision=frac_precision)
 
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL MINUTE
+        TO SECOND
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                minutes, seconds = divmod(value.total_seconds(), 60)
+                minutes = int(minutes)
+                seconds = int(seconds) + value.microseconds / 1000000
+                value   = td_dtypes.Interval(minutes=minutes, seconds=seconds)
+            return value
+        return process
+
 class INTERVAL_SECOND(_TDInterval):
 
     """ Teradata Interval Second data type
@@ -313,6 +441,19 @@ class INTERVAL_SECOND(_TDInterval):
         """
         super(INTERVAL_SECOND, self).__init__(precision=precision,
                                               frac_precision=frac_precision)
+
+    def bind_processor(self, dialect):
+
+        """
+        Handles the conversion from a datetime.timedelta object to an Interval
+        object appropriate for inserting into a column with type INTERVAL SECOND
+        """
+        def process(value):
+            if isinstance(value, datetime.timedelta):
+                seconds = value.total_seconds()
+                value = td_dtypes.Interval(seconds=seconds)
+            return value
+        return process
 
 
 class _TDPeriod(types.UserDefinedType):
