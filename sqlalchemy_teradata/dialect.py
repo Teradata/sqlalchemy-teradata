@@ -10,6 +10,7 @@ from sqlalchemy import pool, String, Numeric
 from sqlalchemy.sql import select, and_, or_
 from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler, TeradataTypeCompiler
 from sqlalchemy_teradata.base import TeradataIdentifierPreparer, TeradataExecutionContext
+from sqlalchemy_teradata.data_type_converter import TDDataTypeConverter
 from sqlalchemy.sql.expression import text, table, column, asc
 from sqlalchemy import Table, Column, Index
 import sqlalchemy.types as sqltypes
@@ -110,12 +111,13 @@ class TeradataDialect(default.DefaultDialect):
         super(TeradataDialect, self).__init__(**kwargs)
 
     def create_connect_args(self, url):
-      if url is not None:
-        params = super(TeradataDialect, self).create_connect_args(url)[1]
-        cargs = ("Teradata", params['host'], params['username'], params['password'])
-        cparams = {p:params[p] for p in params if p not in\
-                                ['host', 'username', 'password']}
-        return (cargs, cparams)
+        if url is not None:
+            params = super(TeradataDialect, self).create_connect_args(url)[1]
+            cargs = ("Teradata", params['host'], params['username'], params['password'])
+            cparams = {p:params[p] for p in params if p not in\
+                                    ['host', 'username', 'password']}
+            cparams['dataTypeConverter'] = TDDataTypeConverter()
+            return (cargs, cparams)
 
     @classmethod
     def dbapi(cls):

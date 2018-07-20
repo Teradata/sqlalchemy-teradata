@@ -11,12 +11,14 @@ from sqlalchemy import types
 import teradata.datatypes as td_dtypes
 import datetime
 
+
 class BYTEINT(sqltypes.Integer):
     """
     Teradata BYTEINT type.
     This type represents a one byte signed integer.
     """
     __visit_name__ = 'BYTEINT'
+
 
 class DECIMAL(sqltypes.DECIMAL):
 
@@ -481,7 +483,6 @@ class _TDPeriod(types.UserDefinedType):
             return value
         return process
 
-
 class PERIOD_DATE(_TDPeriod):
 
     """ Teradata Period Date data type
@@ -497,7 +498,6 @@ class PERIOD_DATE(_TDPeriod):
 
         """
         super(PERIOD_DATE, self).__init__(format=format, **kwargs)
-
 
 class PERIOD_TIME(_TDPeriod):
 
@@ -519,7 +519,6 @@ class PERIOD_TIME(_TDPeriod):
         super(PERIOD_TIME, self).__init__(format=format, **kwargs)
         self.frac_precision = frac_precision
         self.timezone       = timezone
-
 
 class PERIOD_TIMESTAMP(_TDPeriod):
 
@@ -612,6 +611,7 @@ class CLOB(sqltypes.CLOB):
         super(CLOB, self).__init__(length=length, **kwargs)
         self.charset = charset
         self.multiplier=multiplier
+
 
 class BLOB(sqltypes.LargeBinary):
         pass

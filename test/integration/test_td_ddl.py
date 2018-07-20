@@ -359,7 +359,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         configuration). Subsequently, the following tests are carried out:
 
         (1) Inspect the column types by reflection to see that each column is
-            of the expected type and possesses the expected attributes.
+            of the expected type and possesses the expected attribute values.
 
         (2) Insert some data into each of the columns in the form of strings,
             timedelta, and Teradata Interval objects. This data is then queried
@@ -382,16 +382,20 @@ class TestTypesDDL(testing.fixtures.TestBase):
             'column_12': sqlalch_td.INTERVAL_SECOND(precision=3, frac_precision=5)
         }
 
+        # Create the test table with the above Interval types
         cols  = [Column(name, type.copy()) for name, type in col_types.items()]
         table = Table('table_test_types_interval', self.metadata, *cols)
         self.metadata.create_all(checkfirst=False)
 
+        # Test that each reflected column type has all the attribute values it
+        # was instantiated with
         reflected_cols = self.inspect.get_columns('table_test_types_interval')
         for col in reflected_cols:
             assert(type(col['type']) == type(col_types[col['name']]))
             assert(str(col['type'].__dict__) ==
                 str(col_types[col['name']].__dict__))
 
+        # Insert three rows of data into the test table
         self.conn.execute(table.insert(),
             {'column_0':  None,
              'column_1':  None,
@@ -434,6 +438,9 @@ class TestTypesDDL(testing.fixtures.TestBase):
              'column_12': td_dtypes.Interval(seconds=20.20)})
         res = self.conn.execute(table.select().order_by(table.c.column_0))
 
+        # Test that insertion by strings, timedelta, and Interval objects are
+        # correctly handled by checking that the string representation of each
+        # row that is queried back is as expected
         assert(str([str(c) for c in res.fetchone()]) ==
             "['None', 'None', 'None', '365', '366 00', '365 01:00', "
             "'365 00:01:00.123', '24', '25:00', '24:01:00.123', '60', "
@@ -454,7 +461,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         configurations). Subsequently, the following tests are carried out:
 
         (1) Inspect the column types by reflection to see that each column is
-            of the expected type and possesses the expected attributes.
+            of the expected type and possesses the expected attribute values.
 
         (2) Insert some data into each of the columns in the form of both
             strings and teradata Period objects. This data is then queried
@@ -487,7 +494,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         table = Table('table_test_types_period', self.metadata, *cols)
         self.metadata.create_all(checkfirst=False)
 
-        # Test that each reflected column type has all the attributes it
+        # Test that each reflected column type has all the attribute values it
         # was instantiated with
         reflected_cols = self.inspect.get_columns('table_test_types_period')
         for col in reflected_cols:
