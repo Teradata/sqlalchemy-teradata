@@ -629,8 +629,9 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
 
         return self._string_process(type_, 'CLOB', **kw)
 
+    # TODO Experimental
     def visit_BLOB(self, type, **kw):
-        pass
+        return 'BLOB'
 
     def visit_BOOLEAN(self, type_, **kw):
         return self.visit_BYTEINT(type_, **kw)
