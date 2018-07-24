@@ -10,6 +10,7 @@ from sqlalchemy import pool, String, Numeric
 from sqlalchemy.sql import select, and_, or_
 from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler, TeradataTypeCompiler
 from sqlalchemy_teradata.base import TeradataIdentifierPreparer, TeradataExecutionContext
+from sqlalchemy_teradata.data_type_converter import TDDataTypeConverter
 from sqlalchemy.sql.expression import text, table, column, asc
 from sqlalchemy import Table, Column, Index
 import sqlalchemy.types as sqltypes
@@ -20,23 +21,23 @@ from itertools import groupby
 ischema_names = {
     None: sqltypes.NullType,
 
-    'cf': tdtypes.CHAR,
-    'cv': tdtypes.VARCHAR,
     'uf': sqltypes.NCHAR,
     'uv': sqltypes.NVARCHAR,
-    'co': tdtypes.CLOB,
-    'n' : tdtypes.NUMERIC,
-    'd' : tdtypes.DECIMAL,
     'i' : sqltypes.INTEGER,
-    'i1': tdtypes.BYTEINT,
     'i2': sqltypes.SMALLINT,
     'i8': sqltypes.BIGINT,
     'f' : sqltypes.FLOAT,
     'da': sqltypes.DATE,
+    'cf': tdtypes.CHAR,
+    'cv': tdtypes.VARCHAR,
+    'co': tdtypes.CLOB,
+    'n' : tdtypes.NUMERIC,
+    'd' : tdtypes.DECIMAL,
+    'i1': tdtypes.BYTEINT,
     'ts': tdtypes.TIMESTAMP,
     'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
     'at': tdtypes.TIME,
-    'tz': tdtypes.TIMESTAMP,    #Added time with timezone
+    'tz': tdtypes.TIME,         #Added time with timezone
 
     #Experimental - Binary
     'bf': sqltypes.BINARY,
@@ -44,19 +45,19 @@ ischema_names = {
     'bo': sqltypes.BLOB,
 
     #Interval Types
-    'dh': tdtypes.IntervalDayToHour,
-    'dm': tdtypes.IntervalDayToMinute,
-    'ds': tdtypes.IntervalDayToSecond,
-    'dy': tdtypes.IntervalDay,
-    'hm': tdtypes.IntervalHourToMinute,
-    'hr': tdtypes.IntervalHour,
-    'hs': tdtypes.IntervalHourToSecond,
-    'mi': tdtypes.IntervalMinute,
-    'mo': tdtypes.IntervalMonth,
-    'ms': tdtypes.IntervalMinuteToSecond,
-    'sc': tdtypes.IntervalSecond,
-    'ym': tdtypes.IntervalYearToMonth,
-    'yr': tdtypes.IntervalYear,
+    'dh': tdtypes.INTERVAL_DAY_TO_HOUR,
+    'dm': tdtypes.INTERVAL_DAY_TO_MINUTE,
+    'ds': tdtypes.INTERVAL_DAY_TO_SECOND,
+    'dy': tdtypes.INTERVAL_DAY,
+    'hm': tdtypes.INTERVAL_HOUR_TO_MINUTE,
+    'hr': tdtypes.INTERVAL_HOUR,
+    'hs': tdtypes.INTERVAL_HOUR_TO_SECOND,
+    'mi': tdtypes.INTERVAL_MINUTE,
+    'mo': tdtypes.INTERVAL_MONTH,
+    'ms': tdtypes.INTERVAL_MINUTE_TO_SECOND,
+    'sc': tdtypes.INTERVAL_SECOND,
+    'ym': tdtypes.INTERVAL_YEAR_TO_MONTH,
+    'yr': tdtypes.INTERVAL_YEAR,
 
     #Period Types
     'pd': tdtypes.PERIOD_DATE,
@@ -110,12 +111,13 @@ class TeradataDialect(default.DefaultDialect):
         super(TeradataDialect, self).__init__(**kwargs)
 
     def create_connect_args(self, url):
-      if url is not None:
-        params = super(TeradataDialect, self).create_connect_args(url)[1]
-        cargs = ("Teradata", params['host'], params['username'], params['password'])
-        cparams = {p:params[p] for p in params if p not in\
-                                ['host', 'username', 'password']}
-        return (cargs, cparams)
+        if url is not None:
+            params = super(TeradataDialect, self).create_connect_args(url)[1]
+            cargs = ("Teradata", params['host'], params['username'], params['password'])
+            cparams = {p:params[p] for p in params if p not in\
+                                    ['host', 'username', 'password']}
+            cparams['dataTypeConverter'] = TDDataTypeConverter()
+            return (cargs, cparams)
 
     @classmethod
     def dbapi(cls):
@@ -176,12 +178,8 @@ class TeradataDialect(default.DefaultDialect):
                 #prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
                 return t(precision=prec,timezone=tz)
 
-            elif issubclass(t, sqltypes.Interval):
-                # TODO what is going on with this? instantiate type with day and
-                #      second precision when reflect but use frac and prec when
-                #      compiling
-                # print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
-                return t(day_precision=kw['prec'],second_precision=kw['scale'])
+            elif issubclass(t, tdtypes._TDInterval):
+                return t(precision=kw['prec'], frac_precision=kw['scale'])
 
             elif issubclass(t, tdtypes.PERIOD_DATE):
                 return t(format=kw['fmt'])

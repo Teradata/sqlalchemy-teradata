@@ -2,6 +2,7 @@ from sqlalchemy import *
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
 from sqlalchemy import testing
 from sqlalchemy import sql
+from sqlalchemy.sql import sqltypes
 from sqlalchemy.engine import reflection
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
@@ -25,7 +26,18 @@ class TestTypesDDL(testing.fixtures.TestBase):
         self.metadata = MetaData(bind=self.engine)
         self.inspect  = reflection.Inspector.from_engine(self.engine)
 
-        self.sqlalch_types = sqlalch_td.__all__
+        self.sqlalch_types = sqlalch_td.__all__ + (
+            sqltypes.Integer,
+            sqltypes.SmallInteger,
+            sqltypes.BigInteger,
+            sqltypes.Float,
+            sqltypes.Date,
+            sqltypes.Boolean,
+            sqltypes.Interval,
+            sqltypes.Text,
+            sqltypes.Unicode,
+            sqltypes.UnicodeText
+        )
         self.rawsql_types  = (
             'CHARACTER', 'VARCHAR(50)', 'CLOB', 'BIGINT', 'SMALLINT',
             'BYTEINT', 'INTEGER', 'DECIMAL', 'FLOAT', 'NUMBER',
@@ -54,40 +66,40 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqlalch_td.Integer:                decimal.Decimal,
-            sqlalch_td.SmallInteger:           decimal.Decimal,
-            sqlalch_td.BigInteger:             decimal.Decimal,
-            sqlalch_td.Float:                  decimal.Decimal,
-            sqlalch_td.Boolean:                decimal.Decimal,
-            sqlalch_td.DECIMAL:                decimal.Decimal,
-            sqlalch_td.BYTEINT:                decimal.Decimal,
-            sqlalch_td.DATE:                   datetime.date,
-            sqlalch_td.TIME:                   datetime.time,
-            sqlalch_td.TIMESTAMP:              datetime.datetime,
-            sqlalch_td.Interval:               datetime.datetime,
-            sqlalch_td.CHAR:                   str,
-            sqlalch_td.VARCHAR:                str,
-            sqlalch_td.CLOB:                   str,
-            sqlalch_td.Text:                   str,
-            sqlalch_td.Unicode:                str,
-            sqlalch_td.UnicodeText:            str,
+            sqltypes.Integer:                     decimal.Decimal,
+            sqltypes.SmallInteger:                decimal.Decimal,
+            sqltypes.BigInteger:                  decimal.Decimal,
+            sqltypes.Float:                       decimal.Decimal,
+            sqltypes.Boolean:                     decimal.Decimal,
+            sqltypes.Interval:                    datetime.datetime,
+            sqltypes.Date:                        datetime.date,
+            sqltypes.Text:                        str,
+            sqltypes.Unicode:                     str,
+            sqltypes.UnicodeText:                 str,
 
-            sqlalch_td.IntervalYear:           str,
-            sqlalch_td.IntervalYearToMonth:    str,
-            sqlalch_td.IntervalMonth:          str,
-            sqlalch_td.IntervalDay:            str,
-            sqlalch_td.IntervalDayToHour:      str,
-            sqlalch_td.IntervalDayToMinute:    str,
-            sqlalch_td.IntervalDayToSecond:    str,
-            sqlalch_td.IntervalHour:           str,
-            sqlalch_td.IntervalHourToMinute:   str,
-            sqlalch_td.IntervalHourToSecond:   str,
-            sqlalch_td.IntervalMinute:         str,
-            sqlalch_td.IntervalMinuteToSecond: str,
-            sqlalch_td.IntervalSecond:         str,
-            sqlalch_td.PERIOD_DATE:            str,
-            sqlalch_td.PERIOD_TIME:            str,
-            sqlalch_td.PERIOD_TIMESTAMP:       str
+            sqlalch_td.DECIMAL:                   decimal.Decimal,
+            sqlalch_td.BYTEINT:                   decimal.Decimal,
+            sqlalch_td.TIME:                      datetime.time,
+            sqlalch_td.TIMESTAMP:                 datetime.datetime,
+            sqlalch_td.CHAR:                      str,
+            sqlalch_td.VARCHAR:                   str,
+            sqlalch_td.CLOB:                      str,
+            sqlalch_td.INTERVAL_YEAR:             str,
+            sqlalch_td.INTERVAL_YEAR_TO_MONTH:    str,
+            sqlalch_td.INTERVAL_MONTH:            str,
+            sqlalch_td.INTERVAL_DAY:              str,
+            sqlalch_td.INTERVAL_DAY_TO_HOUR:      str,
+            sqlalch_td.INTERVAL_DAY_TO_MINUTE:    str,
+            sqlalch_td.INTERVAL_DAY_TO_SECOND:    str,
+            sqlalch_td.INTERVAL_HOUR:             str,
+            sqlalch_td.INTERVAL_HOUR_TO_MINUTE:   str,
+            sqlalch_td.INTERVAL_HOUR_TO_SECOND:   str,
+            sqlalch_td.INTERVAL_MINUTE:           str,
+            sqlalch_td.INTERVAL_MINUTE_TO_SECOND: str,
+            sqlalch_td.INTERVAL_SECOND:           str,
+            sqlalch_td.PERIOD_DATE:               str,
+            sqlalch_td.PERIOD_TIME:               str,
+            sqlalch_td.PERIOD_TIMESTAMP:          str
         }
 
         res = self.conn.execute(table.select())
@@ -113,40 +125,40 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqlalch_td.Integer:                sql.sqltypes.INTEGER,
-            sqlalch_td.SmallInteger:           sql.sqltypes.SMALLINT,
-            sqlalch_td.BigInteger:             sql.sqltypes.BIGINT,
-            sqlalch_td.Float:                  sql.sqltypes.FLOAT,
-            sqlalch_td.Boolean:                sqlalch_td.BYTEINT,
-            sqlalch_td.DECIMAL:                sqlalch_td.DECIMAL,
-            sqlalch_td.BYTEINT:                sqlalch_td.BYTEINT,
-            sqlalch_td.DATE:                   sqlalch_td.DATE,
-            sqlalch_td.TIME:                   sqlalch_td.TIME,
-            sqlalch_td.TIMESTAMP:              sqlalch_td.TIMESTAMP,
-            sqlalch_td.Interval:               sqlalch_td.TIMESTAMP,
-            sqlalch_td.CHAR:                   sqlalch_td.CHAR,
-            sqlalch_td.CLOB:                   sqlalch_td.CLOB,
-            sqlalch_td.Text:                   sqlalch_td.CLOB,
-            sqlalch_td.VARCHAR:                sqlalch_td.VARCHAR,
-            sqlalch_td.Unicode:                sqlalch_td.VARCHAR,
-            sqlalch_td.UnicodeText:            sqlalch_td.CLOB,
+            sqltypes.Integer:                     sqltypes.INTEGER,
+            sqltypes.SmallInteger:                sqltypes.SMALLINT,
+            sqltypes.BigInteger:                  sqltypes.BIGINT,
+            sqltypes.Float:                       sqltypes.FLOAT,
+            sqltypes.Date:                        sqltypes.DATE,
+            sqltypes.Boolean:                     sqlalch_td.BYTEINT,
+            sqltypes.Interval:                    sqlalch_td.TIMESTAMP,
+            sqltypes.Text:                        sqlalch_td.CLOB,
+            sqltypes.Unicode:                     sqlalch_td.VARCHAR,
+            sqltypes.UnicodeText:                 sqlalch_td.CLOB,
 
-            sqlalch_td.IntervalYear:           sqlalch_td.IntervalYear,
-            sqlalch_td.IntervalYearToMonth:    sqlalch_td.IntervalYearToMonth,
-            sqlalch_td.IntervalMonth:          sqlalch_td.IntervalMonth,
-            sqlalch_td.IntervalDay:            sqlalch_td.IntervalDay,
-            sqlalch_td.IntervalDayToHour:      sqlalch_td.IntervalDayToHour,
-            sqlalch_td.IntervalDayToMinute:    sqlalch_td.IntervalDayToMinute,
-            sqlalch_td.IntervalDayToSecond:    sqlalch_td.IntervalDayToSecond,
-            sqlalch_td.IntervalHour:           sqlalch_td.IntervalHour,
-            sqlalch_td.IntervalHourToMinute:   sqlalch_td.IntervalHourToMinute,
-            sqlalch_td.IntervalHourToSecond:   sqlalch_td.IntervalHourToSecond,
-            sqlalch_td.IntervalMinute:         sqlalch_td.IntervalMinute,
-            sqlalch_td.IntervalMinuteToSecond: sqlalch_td.IntervalMinuteToSecond,
-            sqlalch_td.IntervalSecond:         sqlalch_td.IntervalSecond,
-            sqlalch_td.PERIOD_DATE:            sqlalch_td.PERIOD_DATE,
-            sqlalch_td.PERIOD_TIME:            sqlalch_td.PERIOD_TIME,
-            sqlalch_td.PERIOD_TIMESTAMP:       sqlalch_td.PERIOD_TIMESTAMP
+            sqlalch_td.DECIMAL:                   sqlalch_td.DECIMAL,
+            sqlalch_td.BYTEINT:                   sqlalch_td.BYTEINT,
+            sqlalch_td.TIME:                      sqlalch_td.TIME,
+            sqlalch_td.TIMESTAMP:                 sqlalch_td.TIMESTAMP,
+            sqlalch_td.CHAR:                      sqlalch_td.CHAR,
+            sqlalch_td.CLOB:                      sqlalch_td.CLOB,
+            sqlalch_td.VARCHAR:                   sqlalch_td.VARCHAR,
+            sqlalch_td.INTERVAL_YEAR:             sqlalch_td.INTERVAL_YEAR,
+            sqlalch_td.INTERVAL_YEAR_TO_MONTH:    sqlalch_td.INTERVAL_YEAR_TO_MONTH,
+            sqlalch_td.INTERVAL_MONTH:            sqlalch_td.INTERVAL_MONTH,
+            sqlalch_td.INTERVAL_DAY:              sqlalch_td.INTERVAL_DAY,
+            sqlalch_td.INTERVAL_DAY_TO_HOUR:      sqlalch_td.INTERVAL_DAY_TO_HOUR,
+            sqlalch_td.INTERVAL_DAY_TO_MINUTE:    sqlalch_td.INTERVAL_DAY_TO_MINUTE,
+            sqlalch_td.INTERVAL_DAY_TO_SECOND:    sqlalch_td.INTERVAL_DAY_TO_SECOND,
+            sqlalch_td.INTERVAL_HOUR:             sqlalch_td.INTERVAL_HOUR,
+            sqlalch_td.INTERVAL_HOUR_TO_MINUTE:   sqlalch_td.INTERVAL_HOUR_TO_MINUTE,
+            sqlalch_td.INTERVAL_HOUR_TO_SECOND:   sqlalch_td.INTERVAL_HOUR_TO_SECOND,
+            sqlalch_td.INTERVAL_MINUTE:           sqlalch_td.INTERVAL_MINUTE,
+            sqlalch_td.INTERVAL_MINUTE_TO_SECOND: sqlalch_td.INTERVAL_MINUTE_TO_SECOND,
+            sqlalch_td.INTERVAL_SECOND:           sqlalch_td.INTERVAL_SECOND,
+            sqlalch_td.PERIOD_DATE:               sqlalch_td.PERIOD_DATE,
+            sqlalch_td.PERIOD_TIME:               sqlalch_td.PERIOD_TIME,
+            sqlalch_td.PERIOD_TIMESTAMP:          sqlalch_td.PERIOD_TIMESTAMP
         }
 
         reflected_cols = self.inspect.get_columns('table_test_types_sqlalch')
@@ -172,40 +184,40 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqlalch_td.Integer:                'INTEGER',
-            sqlalch_td.SmallInteger:           'SMALLINT',
-            sqlalch_td.BigInteger:             'BIGINT',
-            sqlalch_td.Float:                  'FLOAT',
-            sqlalch_td.Boolean:                'BYTEINT',
-            sqlalch_td.DECIMAL:                'DECIMAL',
-            sqlalch_td.BYTEINT:                'BYTEINT',
-            sqlalch_td.DATE:                   'DATE',
-            sqlalch_td.TIME:                   'TIME',
-            sqlalch_td.TIMESTAMP:              'TIMESTAMP',
-            sqlalch_td.Interval:               'TIMESTAMP',
-            sqlalch_td.CHAR:                   'CHAR',
-            sqlalch_td.VARCHAR:                'VARCHAR',
-            sqlalch_td.CLOB:                   'CLOB',
-            sqlalch_td.Text:                   'CLOB',
-            sqlalch_td.Unicode:                'VARCHAR',
-            sqlalch_td.UnicodeText:            'CLOB',
+            sqltypes.Integer:                     'INTEGER',
+            sqltypes.SmallInteger:                'SMALLINT',
+            sqltypes.BigInteger:                  'BIGINT',
+            sqltypes.Float:                       'FLOAT',
+            sqltypes.Boolean:                     'BYTEINT',
+            sqltypes.Interval:                    'TIMESTAMP',
+            sqltypes.Date:                        'DATE',
+            sqltypes.Text:                        'CLOB',
+            sqltypes.Unicode:                     'VARCHAR',
+            sqltypes.UnicodeText:                 'CLOB',
 
-            sqlalch_td.IntervalYear:           'INTERVAL YEAR(2)',
-            sqlalch_td.IntervalYearToMonth:    'INTERVAL YEAR(2) TO MONTH',
-            sqlalch_td.IntervalMonth:          'INTERVAL MONTH(2)',
-            sqlalch_td.IntervalDay:            'INTERVAL DAY(2)',
-            sqlalch_td.IntervalDayToHour:      'INTERVAL DAY(2) TO HOUR',
-            sqlalch_td.IntervalDayToMinute:    'INTERVAL DAY(2) TO MINUTE',
-            sqlalch_td.IntervalDayToSecond:    'INTERVAL DAY(2) TO SECOND(6)',
-            sqlalch_td.IntervalHour:           'INTERVAL HOUR(2)',
-            sqlalch_td.IntervalHourToMinute:   'INTERVAL HOUR(2) TO MINUTE',
-            sqlalch_td.IntervalHourToSecond:   'INTERVAL HOUR(2) TO SECOND(6)',
-            sqlalch_td.IntervalMinute:         'INTERVAL MINUTE(2)',
-            sqlalch_td.IntervalMinuteToSecond: 'INTERVAL MINUTE(2) TO SECOND(6)',
-            sqlalch_td.IntervalSecond:         'INTERVAL SECOND(2,6)',
-            sqlalch_td.PERIOD_DATE:            'PERIOD(DATE)',
-            sqlalch_td.PERIOD_TIME:            'PERIOD(TIME(6))',
-            sqlalch_td.PERIOD_TIMESTAMP:       'PERIOD(TIMESTAMP(6))'
+            sqlalch_td.DECIMAL:                   'DECIMAL',
+            sqlalch_td.BYTEINT:                   'BYTEINT',
+            sqlalch_td.TIME:                      'TIME',
+            sqlalch_td.TIMESTAMP:                 'TIMESTAMP',
+            sqlalch_td.CHAR:                      'CHAR',
+            sqlalch_td.VARCHAR:                   'VARCHAR',
+            sqlalch_td.CLOB:                      'CLOB',
+            sqlalch_td.INTERVAL_YEAR:             'INTERVAL YEAR(2)',
+            sqlalch_td.INTERVAL_YEAR_TO_MONTH:    'INTERVAL YEAR(2) TO MONTH',
+            sqlalch_td.INTERVAL_MONTH:            'INTERVAL MONTH(2)',
+            sqlalch_td.INTERVAL_DAY:              'INTERVAL DAY(2)',
+            sqlalch_td.INTERVAL_DAY_TO_HOUR:      'INTERVAL DAY(2) TO HOUR',
+            sqlalch_td.INTERVAL_DAY_TO_MINUTE:    'INTERVAL DAY(2) TO MINUTE',
+            sqlalch_td.INTERVAL_DAY_TO_SECOND:    'INTERVAL DAY(2) TO SECOND(6)',
+            sqlalch_td.INTERVAL_HOUR:             'INTERVAL HOUR(2)',
+            sqlalch_td.INTERVAL_HOUR_TO_MINUTE:   'INTERVAL HOUR(2) TO MINUTE',
+            sqlalch_td.INTERVAL_HOUR_TO_SECOND:   'INTERVAL HOUR(2) TO SECOND(6)',
+            sqlalch_td.INTERVAL_MINUTE:           'INTERVAL MINUTE(2)',
+            sqlalch_td.INTERVAL_MINUTE_TO_SECOND: 'INTERVAL MINUTE(2) TO SECOND(6)',
+            sqlalch_td.INTERVAL_SECOND:           'INTERVAL SECOND(2,6)',
+            sqlalch_td.PERIOD_DATE:               'PERIOD(DATE)',
+            sqlalch_td.PERIOD_TIME:               'PERIOD(TIME(6))',
+            sqlalch_td.PERIOD_TIMESTAMP:          'PERIOD(TIMESTAMP(6))'
         }
 
         parsed_attrs = utils.parse_show_table_col_attrs(
@@ -275,19 +287,19 @@ class TestTypesDDL(testing.fixtures.TestBase):
         col_to_type = {'column_' + str(i): type for
             i, type in enumerate(self.rawsql_types)}
         type_map    = {
-            'BIGINT':       sql.sqltypes.BIGINT,
-            'SMALLINT':     sql.sqltypes.SMALLINT,
+            'BIGINT':       sqltypes.BIGINT,
+            'SMALLINT':     sqltypes.SMALLINT,
+            'INTEGER':      sqltypes.INTEGER,
+            'FLOAT':        sqltypes.FLOAT,
+            'DATE':         sqltypes.DATE,
             'BYTEINT':      sqlalch_td.BYTEINT,
-            'INTEGER':      sql.sqltypes.INTEGER,
             'DECIMAL':      sqlalch_td.DECIMAL,
-            'FLOAT':        sql.sqltypes.FLOAT,
-            'NUMBER':       sqlalch_td.types.NUMERIC,
-            'DATE':         sqlalch_td.DATE,
             'TIME':         sqlalch_td.TIME,
             'TIMESTAMP':    sqlalch_td.TIMESTAMP,
             'CHARACTER':    sqlalch_td.CHAR,
             'VARCHAR(50)':  sqlalch_td.VARCHAR,
-            'CLOB':         sqlalch_td.CLOB
+            'CLOB':         sqlalch_td.CLOB,
+            'NUMBER':       sqlalch_td.types.NUMERIC
         }
 
         reflected_cols = self.inspect.get_columns('table_test_types_rawsql')
@@ -338,6 +350,108 @@ class TestTypesDDL(testing.fixtures.TestBase):
         for col, attr in parsed_attrs.items():
             assert(type_map[col_to_type[col]] in attr)
 
+    def test_types_interval(self):
+        """
+        Tests the correctness of the Teradata Interval type(s) implementation.
+
+        This is done by first creating a test table with columns corresponding
+        to each of the available Interval types (each with a certain attribute
+        configuration). Subsequently, the following tests are carried out:
+
+        (1) Inspect the column types by reflection to see that each column is
+            of the expected type and possesses the expected attribute values.
+
+        (2) Insert some data into each of the columns in the form of strings,
+            timedelta, and Teradata Interval objects. This data is then queried
+            back and checked against its expected string representation.
+        """
+
+        col_types = {
+            'column_0':  sqlalch_td.INTERVAL_YEAR(precision=3),
+            'column_1':  sqlalch_td.INTERVAL_YEAR_TO_MONTH(precision=3),
+            'column_2':  sqlalch_td.INTERVAL_MONTH(precision=3),
+            'column_3':  sqlalch_td.INTERVAL_DAY(precision=3),
+            'column_4':  sqlalch_td.INTERVAL_DAY_TO_HOUR(precision=3),
+            'column_5':  sqlalch_td.INTERVAL_DAY_TO_MINUTE(precision=3),
+            'column_6':  sqlalch_td.INTERVAL_DAY_TO_SECOND(precision=3, frac_precision=5),
+            'column_7':  sqlalch_td.INTERVAL_HOUR(precision=3),
+            'column_8':  sqlalch_td.INTERVAL_HOUR_TO_MINUTE(precision=3),
+            'column_9':  sqlalch_td.INTERVAL_HOUR_TO_SECOND(precision=3, frac_precision=5),
+            'column_10': sqlalch_td.INTERVAL_MINUTE(precision=3),
+            'column_11': sqlalch_td.INTERVAL_MINUTE_TO_SECOND(precision=3, frac_precision=5),
+            'column_12': sqlalch_td.INTERVAL_SECOND(precision=3, frac_precision=5)
+        }
+
+        # Create the test table with the above Interval types
+        cols  = [Column(name, type.copy()) for name, type in col_types.items()]
+        table = Table('table_test_types_interval', self.metadata, *cols)
+        self.metadata.create_all(checkfirst=False)
+
+        # Test that each reflected column type has all the attribute values it
+        # was instantiated with
+        reflected_cols = self.inspect.get_columns('table_test_types_interval')
+        for col in reflected_cols:
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(col_types[col['name']].__dict__))
+
+        # Insert three rows of data into the test table
+        self.conn.execute(table.insert(),
+            {'column_0':  None,
+             'column_1':  None,
+             'column_2':  None,
+             'column_3':  datetime.timedelta(days=365),
+             'column_4':  datetime.timedelta(days=365, hours=24),
+             'column_5':  datetime.timedelta(days=365, minutes=60),
+             'column_6':  datetime.timedelta(days=365, seconds=60.123),
+             'column_7':  datetime.timedelta(hours=24),
+             'column_8':  datetime.timedelta(hours=24, minutes=60),
+             'column_9':  datetime.timedelta(hours=24, seconds=60.123),
+             'column_10': datetime.timedelta(minutes=60),
+             'column_11': datetime.timedelta(minutes=60, seconds=60.123),
+             'column_12': datetime.timedelta(seconds=60.12345)},
+            {'column_0':  '10',
+             'column_1':  '10-10',
+             'column_2':  '10',
+             'column_3':  '10',
+             'column_4':  '10 10',
+             'column_5':  '10 00:10',
+             'column_6':  '10 00:00:10.10',
+             'column_7':  '10',
+             'column_8':  '10:10',
+             'column_9':  '10:00:10.10',
+             'column_10': '10',
+             'column_11': '10:10.10',
+             'column_12': '10.10'},
+            {'column_0':  td_dtypes.Interval(years=20),
+             'column_1':  td_dtypes.Interval(years=20, months=20),
+             'column_2':  td_dtypes.Interval(months=20),
+             'column_3':  td_dtypes.Interval(days=20),
+             'column_4':  td_dtypes.Interval(days=20, hours=20),
+             'column_5':  td_dtypes.Interval(days=20, minutes=20),
+             'column_6':  td_dtypes.Interval(days=20, seconds=20.20),
+             'column_7':  td_dtypes.Interval(hours=20),
+             'column_8':  td_dtypes.Interval(hours=20, minutes=20),
+             'column_9':  td_dtypes.Interval(hours=20, seconds=20.20),
+             'column_10': td_dtypes.Interval(minutes=20),
+             'column_11': td_dtypes.Interval(minutes=20, seconds=20.20),
+             'column_12': td_dtypes.Interval(seconds=20.20)})
+        res = self.conn.execute(table.select().order_by(table.c.column_0))
+
+        # Test that insertion by strings, timedelta, and Interval objects are
+        # correctly handled by checking that the string representation of each
+        # row that is queried back is as expected
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['None', 'None', 'None', '365', '366 00', '365 01:00', "
+            "'365 00:01:00.123', '24', '25:00', '24:01:00.123', '60', "
+            "'61:00.123', '60.12345']")
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['10', '10-10', '10', '10', '10 10', '10 00:10', '10 00:00:10.1', "
+            "'10', '10:10', '10:00:10.1', '10', '10:10.1', '10.1']")
+        assert(str([str(c) for c in res.fetchone()]) ==
+            "['20', '21-08', '20', '20', '20 20', '20 00:20', '20 00:00:20.2', "
+            "'20', '20:20', '20:00:20.2', '20', '20:20.2', '20.2']")
+
     def test_types_period(self):
         """
         Tests the correctness of the Teradata Period type(s) implementation.
@@ -347,7 +461,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         configurations). Subsequently, the following tests are carried out:
 
         (1) Inspect the column types by reflection to see that each column is
-            of the expected type and possesses the expected attributes.
+            of the expected type and possesses the expected attribute values.
 
         (2) Insert some data into each of the columns in the form of both
             strings and teradata Period objects. This data is then queried
@@ -355,7 +469,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         """
 
         col_types = {
-            'column_0': sql.sqltypes.INTEGER(),
+            'column_0': sqltypes.INTEGER(),
             'column_1': sqlalch_td.PERIOD_DATE(
                             format='yyyy-mm-dd'),
             'column_2': sqlalch_td.PERIOD_TIMESTAMP(
@@ -379,7 +493,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         table = Table('table_test_types_period', self.metadata, *cols)
         self.metadata.create_all(checkfirst=False)
 
-        # Test that each reflected column type has all the attributes it
+        # Test that each reflected column type has all the attribute values it
         # was instantiated with
         reflected_cols = self.inspect.get_columns('table_test_types_period')
         for col in reflected_cols:
@@ -435,21 +549,6 @@ class TestTypesDDL(testing.fixtures.TestBase):
             "\"('05:12:32', '05:32:54')\", "
             "\"('2007-05-12 05:12:32+00:00', '2018-07-13 05:32:54+00:00')\", "
             "\"('05:12:32+00:00', '05:32:54+00:00')\"]")
-
-    # TODO Test for the Teradata Interval type(s)
-    # def test_types_interval(self):
-    #     # print(repr(sqlalch_td.IntervalDayToMinute(precision=4)))
-    #     # print(repr(sqlalch_td.PeriodTime(frac_precision=6)))
-    #
-    #     t = Table('table_test_types_interval', self.metadata,
-    #         Column('c0', sqlalch_td.IntervalDayToMinute),
-    #         Column('c1', sqlalch_td.PERIOD_DATE))
-    #
-    #     self.metadata.create_all()
-    #
-    #     self.metadata.remove(t)
-    #     t = Table('table_test_types_interval', self.metadata, autoload=True)
-    #     print(t.c.c0.type)
 
 
 def test_decorator(test_fn):
