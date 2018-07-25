@@ -26,20 +26,3 @@ __all__ = ('INTEGER', 'SMALLINT', 'BIGINT', 'DECIMAL', 'FLOAT', 'DATE', 'TIME',
            'PERIOD_TIME', 'PERIOD_TIMESTAMP')
 
 from teradata import tdodbc
-
-# - BigInteger (BIGINT)
-# - Boolean (BYTEINT, w/ contraint in (0, 1))
-# - Date (DATE)
-# - DateTime (TIMESTAMP)
-# - Enum (VARCHAR, w/ constraint in set of enumerated strings)
-# - Float (FLOAT)
-# - Integer (INTEGER)
-# - Interval (TIMESTAMP)
-# - LargeBinary (BLOB)
-# - Numeric (NUMERIC/FLOAT)
-# - SmallInteger (SMALLINT)
-# - String (LONG VARCHAR)
-# - Text (CLOB)
-# - Time (TIME)
-# - Unicode (LONG VARCHAR CHAR SET UNICODE)
-# - UnicodeText (CLOB CHAR SET UNICODE)
