@@ -5,15 +5,14 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.sql import compiler
-from sqlalchemy import exc
-from sqlalchemy import schema as sa_schema
-from sqlalchemy.types import Unicode
-from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import Select
-from sqlalchemy.sql import operators
-from sqlalchemy import exc, sql
 from sqlalchemy import create_engine
+from sqlalchemy import exc, sql
+from sqlalchemy import schema as sa_schema
+from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql import compiler
+from sqlalchemy.sql import operators
+from sqlalchemy.sql.expression import Select
+from sqlalchemy.types import Unicode
 
 
 class TeradataCompiler(compiler.SQLCompiler):
@@ -499,58 +498,61 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
     def visit_unicode_text(self, type_, **kw):
         return self.visit_CLOB(type_, charset='UNICODE', **kw)
 
-    def visit_interval_year(self, type_, **kw):
+    def visit_boolean(self, type_, **kw):
+        return self.visit_BYTEINT(type_, **kw)
+
+    def visit_INTERVAL_YEAR(self, type_, **kw):
         return 'INTERVAL YEAR{}'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_year_to_month(self, type_, **kw):
+    def visit_INTERVAL_YEAR_TO_MONTH(self, type_, **kw):
         return 'INTERVAL YEAR{} TO MONTH'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_month(self, type_, **kw):
+    def visit_INTERVAL_MONTH(self, type_, **kw):
         return 'INTERVAL MONTH{}'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_day(self, type_, **kw):
+    def visit_INTERVAL_DAY(self, type_, **kw):
         return 'INTERVAL DAY{}'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_day_to_hour(self, type_, **kw):
+    def visit_INTERVAL_DAY_TO_HOUR(self, type_, **kw):
         return 'INTERVAL DAY{} TO HOUR'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_day_to_minute(self, type_, **kw):
+    def visit_INTERVAL_DAY_TO_MINUTE(self, type_, **kw):
         return 'INTERVAL DAY{} TO MINUTE'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_day_to_second(self, type_, **kw):
+    def visit_INTERVAL_DAY_TO_SECOND(self, type_, **kw):
         return 'INTERVAL DAY{} TO SECOND{}'.format(
             '('+str(type_.precision)+')' if type_.precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None  else '')
 
-    def visit_interval_hour(self, type_, **kw):
+    def visit_INTERVAL_HOUR(self, type_, **kw):
         return 'INTERVAL HOUR{}'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_hour_to_minute(self, type_, **kw):
+    def visit_INTERVAL_HOUR_TO_MINUTE(self, type_, **kw):
         return 'INTERVAL HOUR{} TO MINUTE'.format(
             '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_hour_to_second(self, type_, **kw):
+    def visit_INTERVAL_HOUR_TO_SECOND(self, type_, **kw):
         return 'INTERVAL HOUR{} TO SECOND{}'.format(
             '('+str(type_.precision)+')' if type_.precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
 
-    def visit_interval_minute(self, type_, **kw):
+    def visit_INTERVAL_MINUTE(self, type_, **kw):
         return 'INTERVAL MINUTE{}'.format(
               '('+str(type_.precision)+')' if type_.precision else '')
 
-    def visit_interval_minute_to_second(self, type_, **kw):
+    def visit_INTERVAL_MINUTE_TO_SECOND(self, type_, **kw):
         return 'INTERVAL MINUTE{} TO SECOND{}'.format(
             '('+str(type_.precision)+')' if type_.precision else '',
             '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
 
-    def visit_interval_second(self, type_, **kw):
+    def visit_INTERVAL_SECOND(self, type_, **kw):
         if type_.frac_precision is not None and type_.precision:
           return 'INTERVAL SECOND{}'.format(
               '('+str(type_.precision)+', '+str(type_.frac_precision)+')')
@@ -584,9 +586,6 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
         prec = '%s' % '('+str(prec)+')' if prec is not None else ''
         return 'TIME{}{}'.format(prec, tz)
 
-    def visit_DATETIME(self, type_, **kw):
-        return self.visit_TIMESTAMP(type_, precision=6,  **kw)
-
     def visit_TIMESTAMP(self, type_, **kw):
         tz = ' WITH TIME ZONE' if type_.timezone else ''
         prec = self._get('precision', type_, kw)
@@ -603,12 +602,6 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
         res = '{}{}{}'.format(datatype, length, charset)
         return res
 
-    def visit_NCHAR(self, type_, **kw):
-        return self.visit_CHAR(type_, charset='UNICODE', **kw)
-
-    def visit_NVARCHAR(self, type_, **kw):
-        return self.visit_VARCHAR(type_, charset='UNICODE', **kw)
-
     def visit_CHAR(self, type_, **kw):
         return self._string_process(type_, 'CHAR', length=type_.length, **kw)
 
@@ -618,9 +611,6 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
         else:
             return self._string_process(type_, 'VARCHAR', length=type_.length, **kw)
 
-    def visit_TEXT(self, type_, **kw):
-        return self.visit_CLOB(type_, **kw)
-
     def visit_CLOB(self, type_, **kw):
         multi = self._get('multiplier', type_, kw)
         if multi is not None and type_.length is not None:
@@ -629,14 +619,30 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
 
         return self._string_process(type_, 'CLOB', **kw)
 
-    def visit_BLOB(self, type, **kw):
-        pass
-
-    def visit_BOOLEAN(self, type_, **kw):
-        return self.visit_BYTEINT(type_, **kw)
-
     def visit_BYTEINT(self, type_, **kw):
         return 'BYTEINT'
+
+    def visit_BYTE(self, type_, **kw):
+        return 'BYTE{}'.format(
+            '(' + str(type_.length) + ')' if type_.length is not None else '')
+
+    def visit_VARBYTE(self, type_, **kw):
+        return 'VARBYTE{}'.format(
+            '(' + str(type_.length) + ')' if type_.length is not None else '')
+
+    def visit_BLOB(self, type_, **kw):
+        unit = self._get('unit', type_, kw)
+        return 'BLOB{}'.format(
+            '(' + str(type_.length) + \
+                '{})'.format(unit if unit is not None else '')
+            if type_.length is not None else '')
+
+    def visit_NUMBER(self, type_, **kw):
+        args = (str(type_.precision), '') if type_.scale is None \
+               else (str(type_.precision), ', ' + str(type_.scale))
+        return 'NUMBER{}'.format(
+            '' if type_.precision is None else '({}{})'.format(*args))
+
 
 
 

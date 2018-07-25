@@ -4,7 +4,7 @@ from sqlalchemy import sql
 from sqlalchemy.sql import operators
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.plugin.pytestplugin import *
-from sqlalchemy_teradata.types import NUMERIC
+from sqlalchemy_teradata import INTEGER
 
 """
 Unit testing for SQLAlchemy Operators.
@@ -18,7 +18,7 @@ class TestCompileOperators(fixtures.TestBase):
         self.td_engine = create_engine('teradata://', strategy='mock', executor=dump)
         self.metadata  = MetaData(bind=self.td_engine)
 
-        self.table = Table('t_test', self.metadata, Column('c1', NUMERIC))
+        self.table = Table('t_test', self.metadata, Column('c1', INTEGER))
 
     def test_compile_binary_operators(self):
         """

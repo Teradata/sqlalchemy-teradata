@@ -5,66 +5,75 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.engine import default
+from itertools import groupby
 from sqlalchemy import pool, String, Numeric
+from sqlalchemy import Table, Column, Index
+from sqlalchemy.engine import default
 from sqlalchemy.sql import select, and_, or_
+from sqlalchemy.sql.expression import text, table, column, asc
 from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler, TeradataTypeCompiler
 from sqlalchemy_teradata.base import TeradataIdentifierPreparer, TeradataExecutionContext
-from sqlalchemy.sql.expression import text, table, column, asc
-from sqlalchemy import Table, Column, Index
+from sqlalchemy_teradata.data_type_converter import TDDataTypeConverter
+
+import sqlalchemy_teradata as sqlalch_td
 import sqlalchemy.types as sqltypes
 import sqlalchemy_teradata.types as tdtypes
-from itertools import groupby
+
 
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
     None: sqltypes.NullType,
 
-    'cf': tdtypes.CHAR,
-    'cv': tdtypes.VARCHAR,
-    'uf': sqltypes.NCHAR,
-    'uv': sqltypes.NVARCHAR,
-    'co': tdtypes.CLOB,
-    'n' : tdtypes.NUMERIC,
-    'd' : tdtypes.DECIMAL,
+    # SQL standard types (unmodified)
     'i' : sqltypes.INTEGER,
-    'i1': tdtypes.BYTEINT,
     'i2': sqltypes.SMALLINT,
     'i8': sqltypes.BIGINT,
+    'd' : sqltypes.DECIMAL,
     'f' : sqltypes.FLOAT,
     'da': sqltypes.DATE,
+
+    # Numeric types
+    'i1': tdtypes.BYTEINT,
+    'n' : tdtypes.NUMBER,
+
+    # Character types
+    'cf': tdtypes.CHAR,
+    'cv': tdtypes.VARCHAR,
+    'co': tdtypes.CLOB,
+
+    # Datetime types
     'ts': tdtypes.TIMESTAMP,
-    'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
+    'sz': tdtypes.TIMESTAMP,    # Timestamp with timezone
     'at': tdtypes.TIME,
-    'tz': tdtypes.TIMESTAMP,    #Added time with timezone
+    'tz': tdtypes.TIME,         # Time with timezone
 
-    #Experimental - Binary
-    'bf': sqltypes.BINARY,
-    'bv': sqltypes.VARBINARY,
-    'bo': sqltypes.BLOB,
+    # Binary types
+    'bf': tdtypes.BYTE,
+    'bv': tdtypes.VARBYTE,
+    'bo': tdtypes.BLOB,
 
-    #Interval Types
-    'dh': tdtypes.IntervalDayToHour,
-    'dm': tdtypes.IntervalDayToMinute,
-    'ds': tdtypes.IntervalDayToSecond,
-    'dy': tdtypes.IntervalDay,
-    'hm': tdtypes.IntervalHourToMinute,
-    'hr': tdtypes.IntervalHour,
-    'hs': tdtypes.IntervalHourToSecond,
-    'mi': tdtypes.IntervalMinute,
-    'mo': tdtypes.IntervalMonth,
-    'ms': tdtypes.IntervalMinuteToSecond,
-    'sc': tdtypes.IntervalSecond,
-    'ym': tdtypes.IntervalYearToMonth,
-    'yr': tdtypes.IntervalYear,
+    # Interval types
+    'dh': tdtypes.INTERVAL_DAY_TO_HOUR,
+    'dm': tdtypes.INTERVAL_DAY_TO_MINUTE,
+    'ds': tdtypes.INTERVAL_DAY_TO_SECOND,
+    'dy': tdtypes.INTERVAL_DAY,
+    'hm': tdtypes.INTERVAL_HOUR_TO_MINUTE,
+    'hr': tdtypes.INTERVAL_HOUR,
+    'hs': tdtypes.INTERVAL_HOUR_TO_SECOND,
+    'mi': tdtypes.INTERVAL_MINUTE,
+    'mo': tdtypes.INTERVAL_MONTH,
+    'ms': tdtypes.INTERVAL_MINUTE_TO_SECOND,
+    'sc': tdtypes.INTERVAL_SECOND,
+    'ym': tdtypes.INTERVAL_YEAR_TO_MONTH,
+    'yr': tdtypes.INTERVAL_YEAR,
 
-    #Period Types
+    # Period types
     'pd': tdtypes.PERIOD_DATE,
     'pt': tdtypes.PERIOD_TIME,
     'pz': tdtypes.PERIOD_TIME,
     'ps': tdtypes.PERIOD_TIMESTAMP,
     'pm': tdtypes.PERIOD_TIMESTAMP
-} # TODO BLOB
+}
 
 stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
 
@@ -110,12 +119,13 @@ class TeradataDialect(default.DefaultDialect):
         super(TeradataDialect, self).__init__(**kwargs)
 
     def create_connect_args(self, url):
-      if url is not None:
-        params = super(TeradataDialect, self).create_connect_args(url)[1]
-        cargs = ("Teradata", params['host'], params['username'], params['password'])
-        cparams = {p:params[p] for p in params if p not in\
-                                ['host', 'username', 'password']}
-        return (cargs, cparams)
+        if url is not None:
+            params = super(TeradataDialect, self).create_connect_args(url)[1]
+            cargs = ("Teradata", params['host'], params['username'], params['password'])
+            cparams = {p:params[p] for p in params if p not in\
+                                    ['host', 'username', 'password']}
+            cparams['dataTypeConverter'] = TDDataTypeConverter()
+            return (cargs, cparams)
 
     @classmethod
     def dbapi(cls):
@@ -154,11 +164,15 @@ class TeradataDialect(default.DefaultDialect):
             t = ischema_names[tc]
 
             if issubclass(t, sqltypes.String):
-                return t(length=kw['length']/2 if kw['chartype']=='UNICODE' else kw['length'],\
-                            charset=kw['chartype'])
+                return t(
+                    length=int(kw['length'] / 2) if
+                            (kw['chartype'] == 'UNICODE' or
+                             kw['chartype'] == 'GRAPHIC')
+                        else kw['length'],
+                    charset=kw['chartype'])
 
             elif issubclass(t, sqltypes.Float):
-                return t(precision=kw['prec'])
+                return t()
 
             elif issubclass(t, sqltypes.Numeric):
                 return t(precision=kw['prec'], scale=kw['scale'])
@@ -176,12 +190,12 @@ class TeradataDialect(default.DefaultDialect):
                 #prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
                 return t(precision=prec,timezone=tz)
 
-            elif issubclass(t, sqltypes.Interval):
-                # TODO what is going on with this? instantiate type with day and
-                #      second precision when reflect but use frac and prec when
-                #      compiling
-                # print('frac_precision:', kw['scale'], ', precision:', kw['prec'])
-                return t(day_precision=kw['prec'],second_precision=kw['scale'])
+            elif issubclass(t, sqltypes._Binary):
+                # TODO currently BLOBs can't recover the unit, only the length
+                return t(length=kw['length'])
+
+            elif issubclass(t, tdtypes._TDInterval):
+                return t(precision=kw['prec'], frac_precision=kw['scale'])
 
             elif issubclass(t, tdtypes.PERIOD_DATE):
                 return t(format=kw['fmt'])
@@ -200,31 +214,34 @@ class TeradataDialect(default.DefaultDialect):
         Resolves the column information for get_columns given a row.
         """
         chartype = {
-                  0: None,
-                  1: 'LATIN',
-                  2: 'UNICODE',
-                  3: 'KANJISJIS',
-                  4: 'GRAPHIC'}
+            0: None,
+            1: 'LATIN',
+            2: 'UNICODE',
+            3: 'KANJISJIS',
+            4: 'GRAPHIC'
+        }
 
-        #Handle unspecified characterset and disregard chartypes specified for non-character types (e.g. binary, json)
-        typ = self._resolve_type(row['columntype'],\
-                                    length=int(row['columnlength'] or 0),\
-                                    chartype=chartype[row['chartype'] if row['chartype'] in stringtypes else 0],\
-                                    prec=int(row['decimaltotaldigits'] or 0),\
-                                    scale=int(row['decimalfractionaldigits'] or 0),\
-                                    fmt=row['columnformat'])
+        # Handle unspecified characterset and disregard chartypes specified for
+        # non-character types (e.g. binary, json)
+        typ = self._resolve_type(row['columntype'],
+            length=int(row['columnlength'] or 0),
+            chartype=chartype[row['chartype']
+                if row['columntype'].lower() in stringtypes \
+                else 0],
+            prec=int(row['decimaltotaldigits'] or 0),
+            scale=int(row['decimalfractionaldigits'] or 0),
+            fmt=row['columnformat'])
 
         autoinc = row['idcoltype'] in ('GA', 'GD')
 
         return {
-                'name': self.normalize_name(row['columnname']),
-                'type': typ,
-                'nullable': row['nullable'] == u'Y',
-                'default': row['defaultvalue'],
-                'attrs': {
-                    'columnformat':row['columnformat']},
-                'autoincrement': autoinc
-               }
+            'name': self.normalize_name(row['columnname']),
+            'type': typ,
+            'nullable': row['nullable'] == u'Y',
+            'default': row['defaultvalue'],
+            'attrs': {'columnformat':row['columnformat']},
+            'autoincrement': autoinc
+        }
 
 
     def get_columns(self, connection, table_name, schema=None, **kw):

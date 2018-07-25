@@ -1,456 +1,15 @@
-from sqlalchemy import *
-from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
+from sqlalchemy import Table, Column, MetaData, Index, Integer
 from sqlalchemy import testing
-from sqlalchemy import sql
-from sqlalchemy.engine import reflection
+from sqlalchemy_teradata import *
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
-from test import utils
 
-import sqlalchemy_teradata as sqlalch_td
-import teradata.datatypes as td_dtypes
-import decimal, datetime
 import itertools
 
 """
 Integration testing for DDL Expressions and Dialect Extensions
 The tests are based of off SQL Data Definition Language (Release 15.10, Dec '15)
 """
-
-class TestTypesDDL(testing.fixtures.TestBase):
-
-    def setup(self):
-        self.conn     = testing.db.connect()
-        self.engine   = self.conn.engine
-        self.metadata = MetaData(bind=self.engine)
-        self.inspect  = reflection.Inspector.from_engine(self.engine)
-
-        self.sqlalch_types = sqlalch_td.__all__
-        self.rawsql_types  = (
-            'CHARACTER', 'VARCHAR(50)', 'CLOB', 'BIGINT', 'SMALLINT',
-            'BYTEINT', 'INTEGER', 'DECIMAL', 'FLOAT', 'NUMBER',
-            'DATE', 'TIME', 'TIMESTAMP'
-        )
-
-    def tearDown(self):
-        self.metadata.drop_all(self.engine)
-        self.conn.close()
-
-    def test_types_sqlalch_select(self):
-        """
-        Tests that the SQLAlchemy types exported by sqlalchemy_teradata
-        correctly translate to the corresponding native Python types through
-        selection.
-
-        This is carried out by creating a test table containing all the exported
-        types and then querying data from that table to check that the returned
-        cursor_description (types) matches expectation. The test table is
-        created through sqlalchemy schema constructs and meta.create_all().
-        """
-        cols = [Column('column_' + str(i), type)
-            for i, type in enumerate(self.sqlalch_types)]
-        table = Table('table_test_types_sqlalch', self.metadata, *cols)
-        self.metadata.create_all(checkfirst=False)
-
-        col_to_type = {col.name: type(col.type) for col in cols}
-        type_map    = {
-            sqlalch_td.Integer:                decimal.Decimal,
-            sqlalch_td.SmallInteger:           decimal.Decimal,
-            sqlalch_td.BigInteger:             decimal.Decimal,
-            sqlalch_td.Float:                  decimal.Decimal,
-            sqlalch_td.Boolean:                decimal.Decimal,
-            sqlalch_td.DECIMAL:                decimal.Decimal,
-            sqlalch_td.BYTEINT:                decimal.Decimal,
-            sqlalch_td.DATE:                   datetime.date,
-            sqlalch_td.TIME:                   datetime.time,
-            sqlalch_td.TIMESTAMP:              datetime.datetime,
-            sqlalch_td.Interval:               datetime.datetime,
-            sqlalch_td.CHAR:                   str,
-            sqlalch_td.VARCHAR:                str,
-            sqlalch_td.CLOB:                   str,
-            sqlalch_td.Text:                   str,
-            sqlalch_td.Unicode:                str,
-            sqlalch_td.UnicodeText:            str,
-
-            sqlalch_td.IntervalYear:           str,
-            sqlalch_td.IntervalYearToMonth:    str,
-            sqlalch_td.IntervalMonth:          str,
-            sqlalch_td.IntervalDay:            str,
-            sqlalch_td.IntervalDayToHour:      str,
-            sqlalch_td.IntervalDayToMinute:    str,
-            sqlalch_td.IntervalDayToSecond:    str,
-            sqlalch_td.IntervalHour:           str,
-            sqlalch_td.IntervalHourToMinute:   str,
-            sqlalch_td.IntervalHourToSecond:   str,
-            sqlalch_td.IntervalMinute:         str,
-            sqlalch_td.IntervalMinuteToSecond: str,
-            sqlalch_td.IntervalSecond:         str,
-            sqlalch_td.PERIOD_DATE:            str,
-            sqlalch_td.PERIOD_TIME:            str,
-            sqlalch_td.PERIOD_TIMESTAMP:       str
-        }
-
-        res = self.conn.execute(table.select())
-        for col in res._cursor_description():
-            assert(type_map[col_to_type[col[0]]] == col[1])
-
-    def test_types_sqlalch_reflect(self):
-        """
-        Tests that the SQLAlchemy types exported by sqlalchemy_teradata
-        correctly translate to the corresponding SQLAlchemy types through
-        table reflection.
-
-        This is carried out by creating a test table containing all the exported
-        types and then reflecting the table back and checking that each column
-        type is consistent with the types the table was created with. The test
-        table is created through sqlalchemy schema constructs and
-        meta.create_all().
-        """
-        cols = [Column('column_' + str(i), type)
-            for i, type in enumerate(self.sqlalch_types)]
-        table = Table('table_test_types_sqlalch', self.metadata, *cols)
-        self.metadata.create_all(checkfirst=False)
-
-        col_to_type = {col.name: type(col.type) for col in cols}
-        type_map    = {
-            sqlalch_td.Integer:                sql.sqltypes.INTEGER,
-            sqlalch_td.SmallInteger:           sql.sqltypes.SMALLINT,
-            sqlalch_td.BigInteger:             sql.sqltypes.BIGINT,
-            sqlalch_td.Float:                  sql.sqltypes.FLOAT,
-            sqlalch_td.Boolean:                sqlalch_td.BYTEINT,
-            sqlalch_td.DECIMAL:                sqlalch_td.DECIMAL,
-            sqlalch_td.BYTEINT:                sqlalch_td.BYTEINT,
-            sqlalch_td.DATE:                   sqlalch_td.DATE,
-            sqlalch_td.TIME:                   sqlalch_td.TIME,
-            sqlalch_td.TIMESTAMP:              sqlalch_td.TIMESTAMP,
-            sqlalch_td.Interval:               sqlalch_td.TIMESTAMP,
-            sqlalch_td.CHAR:                   sqlalch_td.CHAR,
-            sqlalch_td.CLOB:                   sqlalch_td.CLOB,
-            sqlalch_td.Text:                   sqlalch_td.CLOB,
-            sqlalch_td.VARCHAR:                sqlalch_td.VARCHAR,
-            sqlalch_td.Unicode:                sqlalch_td.VARCHAR,
-            sqlalch_td.UnicodeText:            sqlalch_td.CLOB,
-
-            sqlalch_td.IntervalYear:           sqlalch_td.IntervalYear,
-            sqlalch_td.IntervalYearToMonth:    sqlalch_td.IntervalYearToMonth,
-            sqlalch_td.IntervalMonth:          sqlalch_td.IntervalMonth,
-            sqlalch_td.IntervalDay:            sqlalch_td.IntervalDay,
-            sqlalch_td.IntervalDayToHour:      sqlalch_td.IntervalDayToHour,
-            sqlalch_td.IntervalDayToMinute:    sqlalch_td.IntervalDayToMinute,
-            sqlalch_td.IntervalDayToSecond:    sqlalch_td.IntervalDayToSecond,
-            sqlalch_td.IntervalHour:           sqlalch_td.IntervalHour,
-            sqlalch_td.IntervalHourToMinute:   sqlalch_td.IntervalHourToMinute,
-            sqlalch_td.IntervalHourToSecond:   sqlalch_td.IntervalHourToSecond,
-            sqlalch_td.IntervalMinute:         sqlalch_td.IntervalMinute,
-            sqlalch_td.IntervalMinuteToSecond: sqlalch_td.IntervalMinuteToSecond,
-            sqlalch_td.IntervalSecond:         sqlalch_td.IntervalSecond,
-            sqlalch_td.PERIOD_DATE:            sqlalch_td.PERIOD_DATE,
-            sqlalch_td.PERIOD_TIME:            sqlalch_td.PERIOD_TIME,
-            sqlalch_td.PERIOD_TIMESTAMP:       sqlalch_td.PERIOD_TIMESTAMP
-        }
-
-        reflected_cols = self.inspect.get_columns('table_test_types_sqlalch')
-        for col in reflected_cols:
-            assert(type_map[col_to_type[col['name']]] == type(col['type']))
-
-    def test_types_sqlalch_show(self):
-        """
-        Tests that the SQLAlchemy types exported by sqlalchemy_teradata
-        correctly translate to the corresponding database types through
-        show table.
-
-        This is carried out by creating a test table containing all the exported
-        types and then doing a SHOW TABLE query on the created table. The
-        returned table string is then parsed to extract the attributes of each
-        column and then checked against the expected types. The test table is
-        created through sqlalchemy schema constructs and meta.create_all().
-        """
-        cols = [Column('column_' + str(i), type)
-            for i, type in enumerate(self.sqlalch_types)]
-        table = Table('table_test_types_sqlalch', self.metadata, *cols)
-        self.metadata.create_all(checkfirst=False)
-
-        col_to_type = {col.name: type(col.type) for col in cols}
-        type_map    = {
-            sqlalch_td.Integer:                'INTEGER',
-            sqlalch_td.SmallInteger:           'SMALLINT',
-            sqlalch_td.BigInteger:             'BIGINT',
-            sqlalch_td.Float:                  'FLOAT',
-            sqlalch_td.Boolean:                'BYTEINT',
-            sqlalch_td.DECIMAL:                'DECIMAL',
-            sqlalch_td.BYTEINT:                'BYTEINT',
-            sqlalch_td.DATE:                   'DATE',
-            sqlalch_td.TIME:                   'TIME',
-            sqlalch_td.TIMESTAMP:              'TIMESTAMP',
-            sqlalch_td.Interval:               'TIMESTAMP',
-            sqlalch_td.CHAR:                   'CHAR',
-            sqlalch_td.VARCHAR:                'VARCHAR',
-            sqlalch_td.CLOB:                   'CLOB',
-            sqlalch_td.Text:                   'CLOB',
-            sqlalch_td.Unicode:                'VARCHAR',
-            sqlalch_td.UnicodeText:            'CLOB',
-
-            sqlalch_td.IntervalYear:           'INTERVAL YEAR(2)',
-            sqlalch_td.IntervalYearToMonth:    'INTERVAL YEAR(2) TO MONTH',
-            sqlalch_td.IntervalMonth:          'INTERVAL MONTH(2)',
-            sqlalch_td.IntervalDay:            'INTERVAL DAY(2)',
-            sqlalch_td.IntervalDayToHour:      'INTERVAL DAY(2) TO HOUR',
-            sqlalch_td.IntervalDayToMinute:    'INTERVAL DAY(2) TO MINUTE',
-            sqlalch_td.IntervalDayToSecond:    'INTERVAL DAY(2) TO SECOND(6)',
-            sqlalch_td.IntervalHour:           'INTERVAL HOUR(2)',
-            sqlalch_td.IntervalHourToMinute:   'INTERVAL HOUR(2) TO MINUTE',
-            sqlalch_td.IntervalHourToSecond:   'INTERVAL HOUR(2) TO SECOND(6)',
-            sqlalch_td.IntervalMinute:         'INTERVAL MINUTE(2)',
-            sqlalch_td.IntervalMinuteToSecond: 'INTERVAL MINUTE(2) TO SECOND(6)',
-            sqlalch_td.IntervalSecond:         'INTERVAL SECOND(2,6)',
-            sqlalch_td.PERIOD_DATE:            'PERIOD(DATE)',
-            sqlalch_td.PERIOD_TIME:            'PERIOD(TIME(6))',
-            sqlalch_td.PERIOD_TIMESTAMP:       'PERIOD(TIMESTAMP(6))'
-        }
-
-        parsed_attrs = utils.parse_show_table_col_attrs(
-            self.conn.execute(
-                'SHOW TABLE table_test_types_sqlalch').fetchone().items()[0][1],
-            tuple(col.name for col in cols))
-
-        for col, attr in parsed_attrs.items():
-            assert(type_map[col_to_type[col]] in attr)
-
-    def test_types_rawsql_select(self):
-        """
-        Tests that a selection of SQL types correctly translate to the
-        corresponding native Python types through selection.
-
-        This is carried out by creating a test table containing the selection of
-        types and then querying data from that table to check that the returned
-        cursor_description (types) matches expectation. The test table is
-        created by directly executing the appropriate DDL on a Teradata
-        SQLAlchemy engine.
-        """
-        stmt = 'CREATE TABLE table_test_types_rawsql (' +\
-               ', '.join(['column_' + str(i) + ' ' + str(type) for
-               i, type in enumerate(self.rawsql_types)]) + ')'
-        Table('table_test_types_rawsql', self.metadata)
-        self.conn.execute(stmt)
-
-        col_to_type = {'column_' + str(i): type for
-            i, type in enumerate(self.rawsql_types)}
-        type_map    = {
-            'BIGINT':       decimal.Decimal,
-            'SMALLINT':     decimal.Decimal,
-            'BYTEINT':      decimal.Decimal,
-            'INTEGER':      decimal.Decimal,
-            'DECIMAL':      decimal.Decimal,
-            'FLOAT':        decimal.Decimal,
-            'NUMBER':       decimal.Decimal,
-            'DATE':         datetime.date,
-            'TIME':         datetime.time,
-            'TIMESTAMP':    datetime.datetime,
-            'CHARACTER':    str,
-            'VARCHAR(50)':  str,
-            'CLOB':         str
-        }
-
-        res = self.conn.execute('SELECT * FROM table_test_types_rawsql')
-        for col in res._cursor_description():
-            assert(type_map[col_to_type[col[0]]] == col[1])
-
-    def test_types_rawsql_reflect(self):
-        """
-        Tests that a selection of SQL types correctly translate to the
-        corresponding SQLAlchemy types through reflection.
-
-        This is carried out by creating a test table containing the selection of
-        types and then reflecting the table back and checking that each column
-        type is consistent with the types the table was created with. The test
-        table is created by directly executing the appropriate DDL on a Teradata
-        SQLAlchemy engine.
-        """
-        stmt = 'CREATE TABLE table_test_types_rawsql (' +\
-               ', '.join(['column_' + str(i) + ' ' + str(type) for
-               i, type in enumerate(self.rawsql_types)]) + ')'
-        Table('table_test_types_rawsql', self.metadata)
-        self.conn.execute(stmt)
-
-        col_to_type = {'column_' + str(i): type for
-            i, type in enumerate(self.rawsql_types)}
-        type_map    = {
-            'BIGINT':       sql.sqltypes.BIGINT,
-            'SMALLINT':     sql.sqltypes.SMALLINT,
-            'BYTEINT':      sqlalch_td.BYTEINT,
-            'INTEGER':      sql.sqltypes.INTEGER,
-            'DECIMAL':      sqlalch_td.DECIMAL,
-            'FLOAT':        sql.sqltypes.FLOAT,
-            'NUMBER':       sqlalch_td.types.NUMERIC,
-            'DATE':         sqlalch_td.DATE,
-            'TIME':         sqlalch_td.TIME,
-            'TIMESTAMP':    sqlalch_td.TIMESTAMP,
-            'CHARACTER':    sqlalch_td.CHAR,
-            'VARCHAR(50)':  sqlalch_td.VARCHAR,
-            'CLOB':         sqlalch_td.CLOB
-        }
-
-        reflected_cols = self.inspect.get_columns('table_test_types_rawsql')
-        for col in reflected_cols:
-            assert(type_map[col_to_type[col['name']]] == type(col['type']))
-
-    def test_types_rawsql_show(self):
-        """
-        Tests that a selection of SQL types correctly translate to the
-        corresponding database types through show table.
-
-        This is carried out by creating a test table containing the selection of
-        types and then doing a SHOW TABLE query on the created table. The
-        returned table string is then parsed to extract the attributes of each
-        column and then checked against the expected types. The test table is
-        created by directly executing the appropriate DDL on a Teradata
-        SQLAlchemy engine.
-        """
-        stmt = 'CREATE TABLE table_test_types_rawsql (' +\
-               ', '.join(['column_' + str(i) + ' ' + str(type) for
-               i, type in enumerate(self.rawsql_types)]) + ')'
-        Table('table_test_types_rawsql', self.metadata)
-        self.conn.execute(stmt)
-
-        col_to_type = {'column_' + str(i): type for
-            i, type in enumerate(self.rawsql_types)}
-        type_map    = {
-            'BIGINT':       'BIGINT',
-            'SMALLINT':     'SMALLINT',
-            'BYTEINT':      'BYTEINT',
-            'INTEGER':      'INTEGER',
-            'DECIMAL':      'DECIMAL',
-            'FLOAT':        'FLOAT',
-            'NUMBER':       'NUMBER',
-            'DATE':         'DATE',
-            'TIME':         'TIME',
-            'TIMESTAMP':    'TIMESTAMP',
-            'CHARACTER':    'CHAR',
-            'VARCHAR(50)':  'VARCHAR',
-            'CLOB':         'CLOB'
-        }
-
-        parsed_attrs = utils.parse_show_table_col_attrs(
-            self.conn.execute(
-                'SHOW TABLE table_test_types_rawsql').fetchone().items()[0][1],
-            tuple('column_' + str(i) for i in range(len(self.rawsql_types))))
-
-        for col, attr in parsed_attrs.items():
-            assert(type_map[col_to_type[col]] in attr)
-
-    def test_types_period(self):
-        """
-        Tests the correctness of the Teradata Period type(s) implementation.
-
-        This is done by first creating a test table with columns corresponding
-        to each of the available Period types (and their attribute
-        configurations). Subsequently, the following tests are carried out:
-
-        (1) Inspect the column types by reflection to see that each column is
-            of the expected type and possesses the expected attributes.
-
-        (2) Insert some data into each of the columns in the form of both
-            strings and teradata Period objects. This data is then queried
-            back and checked against its expected string representation.
-        """
-
-        col_types = {
-            'column_0': sql.sqltypes.INTEGER(),
-            'column_1': sqlalch_td.PERIOD_DATE(
-                            format='yyyy-mm-dd'),
-            'column_2': sqlalch_td.PERIOD_TIMESTAMP(
-                            frac_precision=5,
-                            format='YYYY-MM-DDBHH:MI:SS.S(5)'),
-            'column_3': sqlalch_td.PERIOD_TIME(
-                            frac_precision=4,
-                            format='HH:MI:SS.S(4)'),
-            'column_4': sqlalch_td.PERIOD_TIMESTAMP(
-                            frac_precision=6,
-                            timezone=True,
-                            format='YYYY-MM-DDBHH:MI:SS.S(6)Z'),
-            'column_5': sqlalch_td.PERIOD_TIME(
-                            frac_precision=6,
-                            timezone=True,
-                            format='HH:MI:SS.S(6)Z')
-        }
-
-        # Create the test table with the above Period types
-        cols  = [Column(name, type) for name, type in col_types.items()]
-        table = Table('table_test_types_period', self.metadata, *cols)
-        self.metadata.create_all(checkfirst=False)
-
-        # Test that each reflected column type has all the attributes it
-        # was instantiated with
-        reflected_cols = self.inspect.get_columns('table_test_types_period')
-        for col in reflected_cols:
-            assert(type(col['type']) == type(col_types[col['name']]))
-            assert(str(col['type'].__dict__) ==
-                str(col_types[col['name']].__dict__))
-
-        # Insert two rows of data into the test table
-        self.conn.execute(table.insert(),
-            {'column_0': 0,
-             'column_1': "('2010-03-01', "
-                         "'2010-08-01')",
-             'column_2': "('2010-04-21 08:00:00.12345', "
-                         "'2010-04-21 17:00:00.12345')",
-             'column_3': "('08:00:00.1234', "
-                         "'17:00:00.1234')",
-             'column_4': "('2010-04-21 08:00:00.000000+08:00', "
-                         "'2010-04-21 17:00:00.000000-08:00')",
-             'column_5': "('08:00:00.000000+08:00', "
-                         "'17:00:00.000000-08:00')"},
-            {'column_0': 1,
-             'column_1': td_dtypes.Period(
-                datetime.date(2007, 5, 12),
-                datetime.date(2018, 7, 13)),
-             'column_2': td_dtypes.Period(
-                datetime.datetime(2007, 5, 12, 5, 12, 32),
-                datetime.datetime(2018, 7, 13, 5, 32, 54)),
-             'column_3': td_dtypes.Period(
-                datetime.time(5, 12, 32),
-                datetime.time(5, 32, 54)),
-             'column_4': td_dtypes.Period(
-                datetime.datetime(2007, 5, 12, 5, 12, 32),
-                datetime.datetime(2018, 7, 13, 5, 32, 54)),
-             'column_5': td_dtypes.Period(
-                datetime.time(5, 12, 32),
-                datetime.time(5, 32, 54))})
-        res = self.conn.execute(table.select().order_by(table.c.column_0))
-
-        # Test that both insertion by strings and Period objects are correctly
-        # handled by checking that the string representation of each row that
-        # is queried back is as expected
-        assert(str([str(c) for c in res.fetchone()]) ==
-            "['0', "
-            "\"('2010-03-01', '2010-08-01')\", "
-            "\"('2010-04-21 08:00:00.123450', '2010-04-21 17:00:00.123450')\", "
-            "\"('08:00:00.123400', '17:00:00.123400')\", "
-            "\"('2010-04-21 08:00:00+08:00', '2010-04-21 17:00:00-08:00')\", "
-            "\"('08:00:00+08:00', '17:00:00-08:00')\"]")
-        assert(str([str(c) for c in res.fetchone()]) ==
-            "['1', "
-            "\"('2007-05-12', '2018-07-13')\", "
-            "\"('2007-05-12 05:12:32', '2018-07-13 05:32:54')\", "
-            "\"('05:12:32', '05:32:54')\", "
-            "\"('2007-05-12 05:12:32+00:00', '2018-07-13 05:32:54+00:00')\", "
-            "\"('05:12:32+00:00', '05:32:54+00:00')\"]")
-
-    # TODO Test for the Teradata Interval type(s)
-    # def test_types_interval(self):
-    #     # print(repr(sqlalch_td.IntervalDayToMinute(precision=4)))
-    #     # print(repr(sqlalch_td.PeriodTime(frac_precision=6)))
-    #
-    #     t = Table('table_test_types_interval', self.metadata,
-    #         Column('c0', sqlalch_td.IntervalDayToMinute),
-    #         Column('c1', sqlalch_td.PERIOD_DATE))
-    #
-    #     self.metadata.create_all()
-    #
-    #     self.metadata.remove(t)
-    #     t = Table('table_test_types_interval', self.metadata, autoload=True)
-    #     print(t.c.c0.type)
-
 
 def test_decorator(test_fn):
 
@@ -505,7 +64,7 @@ class TestCreateIndexDDL(testing.fixtures.TestBase):
         Tests creating tables with an inline column index.
         """
         my_table = Table('t_index_inline', self.metadata,
-                        Column('c1', NUMERIC),
+                        Column('c1', INTEGER),
                         Column('c2', DECIMAL, index=True))
 
     @test_decorator
@@ -514,7 +73,7 @@ class TestCreateIndexDDL(testing.fixtures.TestBase):
         Tests creating tables with the schema index construct.
         """
         my_table = Table('t_index_construct', self.metadata,
-                        Column('c1', NUMERIC),
+                        Column('c1', INTEGER),
                         Column('c2', DECIMAL))
         Index('i', my_table.c.c2)
 
@@ -524,7 +83,7 @@ class TestCreateIndexDDL(testing.fixtures.TestBase):
         Tests creating tables with multiple indexes.
         """
         my_table = Table('t_multiple_indexes', self.metadata,
-                        Column('c1', NUMERIC),
+                        Column('c1', INTEGER),
                         Column('c2', DECIMAL))
         Index('i', my_table.c.c1, my_table.c.c2)
 
@@ -534,7 +93,7 @@ class TestCreateIndexDDL(testing.fixtures.TestBase):
         Tests creating tables with a unique index.
         """
         my_table = Table('t_index_unique', self.metadata,
-                        Column('c', NUMERIC, index=True, unique=True))
+                        Column('c', INTEGER, index=True, unique=True))
 
     @test_decorator
     def test_create_multiple_unique_indexes(self):
@@ -542,7 +101,7 @@ class TestCreateIndexDDL(testing.fixtures.TestBase):
         Tests creating tables with multiple unique indexes.
         """
         my_table = Table('t_multiple_unique_indexes', self.metadata,
-                        Column('c1', NUMERIC),
+                        Column('c1', INTEGER),
                         Column('c2', DECIMAL))
         Index('i', my_table.c.c1, my_table.c.c2, unique=True)
 
@@ -552,7 +111,7 @@ class TestCreateIndexDDL(testing.fixtures.TestBase):
         Tests creating tables with an index without an index name.
         """
         my_table = Table('t_index_noname', self.metadata,
-                        Column('c1', NUMERIC),
+                        Column('c1', INTEGER),
                         Column('c2', DECIMAL))
         Index(None, my_table.c.c2)
 
@@ -892,7 +451,7 @@ class TestCreatePostCreateDDL(testing.fixtures.TestBase):
             Table(
                 self._generate_table_name(post.__name__, opt),
                 metadata,
-                Column('c1', NUMERIC),
+                Column('c1', INTEGER),
                 Column('c2', DECIMAL),
                 Column('c3', VARCHAR),
                 Column('c4', CHAR),

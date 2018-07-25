@@ -5,19 +5,18 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-import re
 from sqlalchemy import *
-from sqlalchemy.sql import compiler
+from sqlalchemy import types as sqltypes
 from sqlalchemy.engine import default
 from sqlalchemy.ext.compiler import compiles
-from sqlalchemy.sql.expression import ClauseElement, Executable
 from sqlalchemy.schema import DDLElement
+from sqlalchemy.sql import compiler
 from sqlalchemy.sql import table
-from sqlalchemy import types as sqltypes
-from sqlalchemy.types import CHAR, DATE, DATETIME, \
-                    BLOB, CLOB, TIMESTAMP, FLOAT, BIGINT, DECIMAL, NUMERIC, \
-                    NCHAR, NVARCHAR, INTEGER, \
-                    SMALLINT, TIME, TEXT, VARCHAR, REAL
+from sqlalchemy.sql.expression import ClauseElement, Executable
+from sqlalchemy.types import INTEGER, SMALLINT, BIGINT, DECIMAL, FLOAT, DATE
+
+import re
+
 
 AUTOCOMMIT_REGEXP = re.compile(
             r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|MERGE)',
@@ -25,9 +24,9 @@ AUTOCOMMIT_REGEXP = re.compile(
 
 #TODO: Read this from the dbc.restrictedwordsv view
 ReservedWords = set(["abort", "abortsession", "abs", "access_lock", "account",
-                    "acos", "acosh", "add", "add_months", "admin", "after",
-                    "aggregate","all", "alter", "amp", "and", "ansidate",
-                    "any", "arglparen", "as", "asc", "asin", "asinh", "at",
+                     "acos", "acosh", "add", "add_months", "admin", "after",
+                     "aggregate","all", "alter", "amp", "and", "ansidate",
+                     "any", "arglparen", "as", "asc", "asin", "asinh", "at",
                      "atan", "atan2", "atanh", "atomic", "authorization", "ave",
                      "average", "avg", "before", "begin" , "between", "bigint",
                      "binary", "blob", "both", "bt", "but", "by", "byte", "byteint",
@@ -75,22 +74,23 @@ def visit_drop_view(element, compiler, **kw):
     return "DROP VIEW {}".format(element.name)
 
 class CreateTableAs(DDLElement):
-        pass
+    pass
 
 @compiles(CreateTableAs)
 def visit_create_table(element, table, **kw):
-        pass
+    pass
 
 class CreateTableQueue(DDLElement):
-        pass
+    pass
 
 class CreateTableGlobalTempTrace(DDLElement):
-        pass
+    pass
+
 class CreateErrorTable(DDLElement):
-        pass
+    pass
 
 class IdentityColumn(DDLElement):
-        pass
+    pass
 
 class CreateJoinIndex():
     pass
