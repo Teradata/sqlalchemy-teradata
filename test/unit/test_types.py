@@ -15,6 +15,9 @@ from sqlalchemy_teradata.dialect import TeradataDialect
 import datetime as dt
 import enum
 
+"""
+Unit testing for compiling Generic, SQL Standard, and Teradata data types.
+"""
 
 class TestCompileGeneric(fixtures.TestBase):
 
@@ -30,6 +33,10 @@ class TestCompileGeneric(fixtures.TestBase):
         self.tdtc = TeradataTypeCompiler(dialect=TeradataDialect())
 
     def test_compile_default(self):
+        """
+        Test compiling Generic types with default parameters.
+        """
+
         assert(self._compile(BigInteger())   == 'BIGINT')
         assert(self._compile(Boolean())      == 'BYTEINT')
         assert(self._compile(Date())         == 'DATE')
@@ -115,6 +122,10 @@ class TestCompileSQLStandard(fixtures.TestBase):
         self.tdtc = TeradataTypeCompiler(dialect=TeradataDialect())
 
     def test_compile_default(self):
+        """
+        Test compiling all SQL Standard types with default paramaters.
+        """
+
         assert(self._compile(INTEGER())  == 'INTEGER')
         assert(self._compile(SMALLINT()) == 'SMALLINT')
         assert(self._compile(BIGINT())   == 'BIGINT')
@@ -141,6 +152,10 @@ class TestCompileTDTypes(fixtures.TestBase):
         self.multiples = ['K', 'M', 'G']
 
     def test_compile_default(self):
+        """
+        Test compiling all Teradata types with default paramaters.
+        """
+
         assert(self._compile(TIME())                      == 'TIME(6)')
         assert(self._compile(TIMESTAMP())                 == 'TIMESTAMP(6)')
         assert(self._compile(CHAR())                      == 'CHAR(1)')
@@ -166,6 +181,10 @@ class TestCompileTDTypes(fixtures.TestBase):
         assert(self._compile(INTERVAL_SECOND())           == 'INTERVAL SECOND')
 
     def test_compile_character(self):
+        """
+        Test compiling Teradata Character types (CHAR, VARCHAR, CLOB) with
+        various parameters.
+        """
 
         for m in self.multiples:
             c = CLOB(length=1, multiplier=m)
@@ -188,10 +207,18 @@ class TestCompileTDTypes(fixtures.TestBase):
                     self._compile(CLOB(len_, c)))
 
     def test_compile_datetime_timezones(self):
+        """
+        Test compiling Teradata datetime types with timezone.
+        """
+
         assert(self._compile(TIME(1, True))      == 'TIME(1) WITH TIME ZONE')
         assert(self._compile(TIMESTAMP(0, True)) == 'TIMESTAMP(0) WITH TIME ZONE')
 
     def test_compile_interval_prec(self):
+        """
+        Test valid ranges of precision (prec) for Teradata Interval types.
+        """
+
         for prec in range(1,5):
             assert(self._compile(INTERVAL_YEAR(prec)) ==
                 'INTERVAL YEAR({})'.format(prec))
@@ -216,7 +243,8 @@ class TestCompileTDTypes(fixtures.TestBase):
 
     def test_compile_interval_frac(self):
         """
-        Test valid ranges of precision (prec) and fractional second precision (fsec)
+        Test valid ranges of precision (prec) and fractional second precision
+        (fsec) for Teradata Interval types.
         """
 
         for prec in range(1,5):
