@@ -1,15 +1,11 @@
 from sqlalchemy import Table, Column, Index
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy import sql
-from sqlalchemy.sql import sqltypes
-from sqlalchemy.schema import CreateColumn, CreateTable, CreateIndex, CreateSchema
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
 
 import sqlalchemy_teradata as sqlalch_td
-import datetime as dt
-import enum
 
 """
 Unit testing for DDL Expressions and Dialect Extensions
@@ -55,72 +51,6 @@ class TestCompileCreateTableDDL(fixtures.TestBase):
     @pytest.mark.xfail
     def test_reflect_table(self):
         assert False
-
-
-class TestCompileTypesDDL(fixtures.TestBase):
-
-    def setup(self):
-        def dump(sql, *multiparams, **params):
-            self.last_compiled = str(sql.compile(dialect=self.td_engine.dialect))
-        self.td_engine = create_engine('teradata://', strategy='mock', executor=dump)
-        self.metadata  = MetaData(bind=self.td_engine)
-
-    def test_compile_types_generic(self):
-        """
-        Tests that the generic types are compiled correctly. This test ensures
-        that the DDL emitted by the generics translate to the correct corresponding
-        database data types and with the necessary contraints when applicable
-        (Boolean and non-native Enum).
-        """
-        class TestEnum(enum.Enum):
-            one   = 1
-            two   = 2
-            three = 3
-
-        col_types = {
-            'column_0':  sqltypes.BigInteger(),
-            'column_1':  sqltypes.Boolean(),
-            'column_2':  sqltypes.Date(),
-            'column_3':  sqltypes.DateTime(),
-            'column_4':  sqltypes.Enum(TestEnum),
-            'column_5':  sqltypes.Float(),
-            'column_6':  sqltypes.Integer(),
-            'column_7':  sqltypes.Interval(),
-            'column_8':  sqltypes.LargeBinary(),
-            'column_9':  sqltypes.Numeric(),
-            'column_10': sqltypes.SmallInteger(),
-            'column_11': sqltypes.String(),
-            'column_12': sqltypes.Text(),
-            'column_13': sqltypes.Time(),
-            'column_14': sqltypes.Unicode(),
-            'column_15': sqltypes.UnicodeText()
-        }
-
-        cols  = [Column(name, type) for name, type in col_types.items()]
-        table = Table('table_test_types_generic', self.metadata, *cols)
-        self.metadata.create_all(checkfirst=False)
-
-        assert(self.last_compiled ==
-            "\nCREATE TABLE table_test_types_generic ("
-                "\n\tcolumn_0 BIGINT, "
-                "\n\tcolumn_1 BYTEINT, "
-                "\n\tcolumn_2 DATE, "
-                "\n\tcolumn_3 TIMESTAMP(6), "
-                "\n\tcolumn_4 VARCHAR(5), "
-                "\n\tcolumn_5 FLOAT, "
-                "\n\tcolumn_6 INTEGER, "
-                "\n\tcolumn_7 TIMESTAMP(6), "
-                "\n\tcolumn_8 BLOB, "
-                "\n\tcolumn_9 NUMERIC, "
-                "\n\tcolumn_10 SMALLINT, "
-                "\n\tcolumn_11 LONG VARCHAR, "
-                "\n\tcolumn_12 CLOB, "
-                "\n\tcolumn_13 TIME(6), "
-                "\n\tcolumn_14 LONG VARCHAR CHAR SET UNICODE, "
-                "\n\tcolumn_15 CLOB CHAR SET UNICODE, "
-                "\n\tCHECK (column_1 IN (0, 1)), "
-                "\n\tCONSTRAINT testenum CHECK (column_4 IN ('one', 'two', 'three'))\n)"
-            "\n\n")
 
 
 class TestCompileCreateIndexDDL(fixtures.TestBase):
