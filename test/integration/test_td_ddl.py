@@ -8,17 +8,58 @@ from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
 from test import utils
 
+import decimal, datetime
+import enum
+import itertools
 import sqlalchemy_teradata as sqlalch_td
 import teradata.datatypes as td_dtypes
-import decimal, datetime
-import itertools
 
 """
 Integration testing for DDL Expressions and Dialect Extensions
 The tests are based of off SQL Data Definition Language (Release 15.10, Dec '15)
 """
 
-class TestTypesDDL(testing.fixtures.TestBase):
+class TestTypesDDLGeneral(testing.fixtures.TestBase):
+
+    """
+    This class conducts general testing of each of the data types supported by
+    the Teradata dialect. Here, we're simply checking to ensure that each type
+    gets reflected back properly, corresponds to the right Python type when
+    queried, and emits the correct SHOW TABLE statement. Further testing of
+    type attributes and data insertion are delegated to the TestTypesDDLDetailed
+    class that follows.
+    """
+
+    def _setup_types(self):
+        class TestEnum(enum.Enum):
+            one   = 1
+            two   = 2
+            three = 3
+
+        generic_types = (
+            sqltypes.BigInteger(),
+            sqltypes.Boolean(),
+            sqltypes.Date(),
+            sqltypes.DateTime(),
+            sqltypes.Enum(TestEnum),
+            sqltypes.Float(),
+            sqltypes.Integer(),
+            sqltypes.Interval(),
+            sqltypes.LargeBinary(),
+            sqltypes.Numeric(),
+            sqltypes.SmallInteger(),
+            sqltypes.String(),
+            sqltypes.Text(),
+            sqltypes.Time(),
+            sqltypes.Unicode(),
+            sqltypes.UnicodeText()
+        )
+        # Grab all the types from sqlalchemy_teradata.__all__ and VARBYTE needs
+        # to be specifically instantiated with a length value
+        td_types = tuple(type_(length=10) if type_ == sqlalch_td.VARBYTE
+            else type_ for type_ in sqlalch_td.__all__)
+
+        return generic_types + td_types
 
     def setup(self):
         self.conn     = testing.db.connect()
@@ -26,18 +67,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         self.metadata = MetaData(bind=self.engine)
         self.inspect  = reflection.Inspector.from_engine(self.engine)
 
-        self.sqlalch_types = sqlalch_td.__all__ + (
-            sqltypes.Integer,
-            sqltypes.SmallInteger,
-            sqltypes.BigInteger,
-            sqltypes.Float,
-            sqltypes.Date,
-            sqltypes.Boolean,
-            sqltypes.Interval,
-            sqltypes.Text,
-            sqltypes.Unicode,
-            sqltypes.UnicodeText
-        )
+        self.sqlalch_types = self._setup_types()
         self.rawsql_types  = (
             'CHARACTER', 'VARCHAR(50)', 'CLOB', 'BIGINT', 'SMALLINT',
             'BYTEINT', 'INTEGER', 'DECIMAL', 'FLOAT', 'NUMBER',
@@ -66,24 +96,40 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqltypes.Integer:                     decimal.Decimal,
-            sqltypes.SmallInteger:                decimal.Decimal,
             sqltypes.BigInteger:                  decimal.Decimal,
-            sqltypes.Float:                       decimal.Decimal,
             sqltypes.Boolean:                     decimal.Decimal,
-            sqltypes.Interval:                    datetime.datetime,
             sqltypes.Date:                        datetime.date,
+            sqltypes.DateTime:                    datetime.datetime,
+            sqltypes.Enum:                        str,
+            sqltypes.Float:                       decimal.Decimal,
+            sqltypes.Integer:                     decimal.Decimal,
+            sqltypes.Interval:                    datetime.datetime,
+            sqltypes.LargeBinary:                 bytearray,
+            sqltypes.Numeric:                     decimal.Decimal,
+            sqltypes.SmallInteger:                decimal.Decimal,
+            sqltypes.String:                      str,
             sqltypes.Text:                        str,
+            sqltypes.Time:                        datetime.time,
             sqltypes.Unicode:                     str,
             sqltypes.UnicodeText:                 str,
 
+            sqlalch_td.INTEGER:                   decimal.Decimal,
+            sqlalch_td.SMALLINT:                  decimal.Decimal,
+            sqlalch_td.BIGINT:                    decimal.Decimal,
             sqlalch_td.DECIMAL:                   decimal.Decimal,
-            sqlalch_td.BYTEINT:                   decimal.Decimal,
+            sqlalch_td.FLOAT:                     decimal.Decimal,
+            sqlalch_td.DATE:                      datetime.date,
+
             sqlalch_td.TIME:                      datetime.time,
             sqlalch_td.TIMESTAMP:                 datetime.datetime,
             sqlalch_td.CHAR:                      str,
             sqlalch_td.VARCHAR:                   str,
             sqlalch_td.CLOB:                      str,
+            sqlalch_td.NUMBER:                    decimal.Decimal,
+            sqlalch_td.BYTEINT:                   decimal.Decimal,
+            sqlalch_td.BYTE:                      bytearray,
+            sqlalch_td.VARBYTE:                   bytearray,
+            sqlalch_td.BLOB:                      bytearray,
             sqlalch_td.INTERVAL_YEAR:             str,
             sqlalch_td.INTERVAL_YEAR_TO_MONTH:    str,
             sqlalch_td.INTERVAL_MONTH:            str,
@@ -125,24 +171,40 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqltypes.Integer:                     sqltypes.INTEGER,
-            sqltypes.SmallInteger:                sqltypes.SMALLINT,
-            sqltypes.BigInteger:                  sqltypes.BIGINT,
-            sqltypes.Float:                       sqltypes.FLOAT,
-            sqltypes.Date:                        sqltypes.DATE,
+            sqltypes.BigInteger:                  sqlalch_td.BIGINT,
             sqltypes.Boolean:                     sqlalch_td.BYTEINT,
+            sqltypes.Date:                        sqlalch_td.DATE,
+            sqltypes.DateTime:                    sqlalch_td.TIMESTAMP,
+            sqltypes.Enum:                        sqlalch_td.VARCHAR,
+            sqltypes.Float:                       sqlalch_td.FLOAT,
+            sqltypes.Integer:                     sqlalch_td.INTEGER,
             sqltypes.Interval:                    sqlalch_td.TIMESTAMP,
+            sqltypes.LargeBinary:                 sqlalch_td.BLOB,
+            sqltypes.Numeric:                     sqlalch_td.DECIMAL,
+            sqltypes.SmallInteger:                sqlalch_td.SMALLINT,
+            sqltypes.String:                      sqlalch_td.VARCHAR,
             sqltypes.Text:                        sqlalch_td.CLOB,
+            sqltypes.Time:                        sqlalch_td.TIME,
             sqltypes.Unicode:                     sqlalch_td.VARCHAR,
             sqltypes.UnicodeText:                 sqlalch_td.CLOB,
 
+            sqlalch_td.INTEGER:                   sqlalch_td.INTEGER,
+            sqlalch_td.SMALLINT:                  sqlalch_td.SMALLINT,
+            sqlalch_td.BIGINT:                    sqlalch_td.BIGINT,
             sqlalch_td.DECIMAL:                   sqlalch_td.DECIMAL,
-            sqlalch_td.BYTEINT:                   sqlalch_td.BYTEINT,
+            sqlalch_td.FLOAT:                     sqlalch_td.FLOAT,
+            sqlalch_td.DATE:                      sqlalch_td.DATE,
+
             sqlalch_td.TIME:                      sqlalch_td.TIME,
             sqlalch_td.TIMESTAMP:                 sqlalch_td.TIMESTAMP,
             sqlalch_td.CHAR:                      sqlalch_td.CHAR,
-            sqlalch_td.CLOB:                      sqlalch_td.CLOB,
             sqlalch_td.VARCHAR:                   sqlalch_td.VARCHAR,
+            sqlalch_td.CLOB:                      sqlalch_td.CLOB,
+            sqlalch_td.NUMBER:                    sqlalch_td.NUMBER,
+            sqlalch_td.BYTEINT:                   sqlalch_td.BYTEINT,
+            sqlalch_td.BYTE:                      sqlalch_td.BYTE,
+            sqlalch_td.VARBYTE:                   sqlalch_td.VARBYTE,
+            sqlalch_td.BLOB:                      sqlalch_td.BLOB,
             sqlalch_td.INTERVAL_YEAR:             sqlalch_td.INTERVAL_YEAR,
             sqlalch_td.INTERVAL_YEAR_TO_MONTH:    sqlalch_td.INTERVAL_YEAR_TO_MONTH,
             sqlalch_td.INTERVAL_MONTH:            sqlalch_td.INTERVAL_MONTH,
@@ -184,24 +246,40 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         col_to_type = {col.name: type(col.type) for col in cols}
         type_map    = {
-            sqltypes.Integer:                     'INTEGER',
-            sqltypes.SmallInteger:                'SMALLINT',
             sqltypes.BigInteger:                  'BIGINT',
-            sqltypes.Float:                       'FLOAT',
             sqltypes.Boolean:                     'BYTEINT',
-            sqltypes.Interval:                    'TIMESTAMP',
             sqltypes.Date:                        'DATE',
+            sqltypes.DateTime:                    'TIMESTAMP',
+            sqltypes.Enum:                        'VARCHAR',
+            sqltypes.Float:                       'FLOAT',
+            sqltypes.Integer:                     'INTEGER',
+            sqltypes.Interval:                    'TIMESTAMP',
+            sqltypes.LargeBinary:                 'BLOB',
+            sqltypes.Numeric:                     'DECIMAL',
+            sqltypes.SmallInteger:                'SMALLINT',
+            sqltypes.String:                      'VARCHAR',
             sqltypes.Text:                        'CLOB',
+            sqltypes.Time:                        'TIME',
             sqltypes.Unicode:                     'VARCHAR',
             sqltypes.UnicodeText:                 'CLOB',
 
+            sqlalch_td.INTEGER:                   'INTEGER',
+            sqlalch_td.SMALLINT:                  'SMALLINT',
+            sqlalch_td.BIGINT:                    'BIGINT',
             sqlalch_td.DECIMAL:                   'DECIMAL',
-            sqlalch_td.BYTEINT:                   'BYTEINT',
+            sqlalch_td.FLOAT:                     'FLOAT',
+            sqlalch_td.DATE:                      'DATE',
+
             sqlalch_td.TIME:                      'TIME',
             sqlalch_td.TIMESTAMP:                 'TIMESTAMP',
             sqlalch_td.CHAR:                      'CHAR',
             sqlalch_td.VARCHAR:                   'VARCHAR',
             sqlalch_td.CLOB:                      'CLOB',
+            sqlalch_td.NUMBER:                    'NUMBER',
+            sqlalch_td.BYTEINT:                   'BYTEINT',
+            sqlalch_td.BYTE:                      'BYTE',
+            sqlalch_td.VARBYTE:                   'VARBYTE',
+            sqlalch_td.BLOB:                      'BLOB',
             sqlalch_td.INTERVAL_YEAR:             'INTERVAL YEAR(2)',
             sqlalch_td.INTERVAL_YEAR_TO_MONTH:    'INTERVAL YEAR(2) TO MONTH',
             sqlalch_td.INTERVAL_MONTH:            'INTERVAL MONTH(2)',
@@ -299,7 +377,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
             'CHARACTER':    sqlalch_td.CHAR,
             'VARCHAR(50)':  sqlalch_td.VARCHAR,
             'CLOB':         sqlalch_td.CLOB,
-            'NUMBER':       sqlalch_td.types.NUMERIC
+            'NUMBER':       sqlalch_td.NUMBER
         }
 
         reflected_cols = self.inspect.get_columns('table_test_types_rawsql')
@@ -318,7 +396,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
         created by directly executing the appropriate DDL on a Teradata
         SQLAlchemy engine.
         """
-        stmt = 'CREATE TABLE table_test_types_rawsql (' +\
+        stmt = 'CREATE TABLE table_test_types_rawsql (' + \
                ', '.join(['column_' + str(i) + ' ' + str(type) for
                i, type in enumerate(self.rawsql_types)]) + ')'
         Table('table_test_types_rawsql', self.metadata)
@@ -349,6 +427,185 @@ class TestTypesDDL(testing.fixtures.TestBase):
 
         for col, attr in parsed_attrs.items():
             assert(type_map[col_to_type[col]] in attr)
+
+
+class TestTypesDDLDetailed(testing.fixtures.TestBase):
+
+    """
+    This class conducts more detailed testing over each category of types
+    currently supported by the Teradata dialect:
+
+        - Binary:     BYTE, VARBYTE, BLOB
+
+        - Numeric:    BIGINT, BYTEINT, DATE, DECIMAL, FLOAT, INTEGER, NUMBER,
+                      SMALLINT
+
+        - Datetime:   DATE, TIME, TIMESTAMP
+
+        - Interval:   INTERVAL YEAR, INTERVAL YEAR TO MONTH, INTERVAL MONTH,
+                      INTERVAL DAY, INTERVAL DAY TO HOUR, INTERVAL DAY TO MINUTE,
+                      INTERVAL DAY TO SECOND, INTERVAL HOUR, INTERVAL HOUR TO
+                      MINUTE, INTERVAL HOUR TO SECOND, INTERVAL MINUTE, INTERVAL
+                      MINUTE TO SECOND, INTERVAL SECOND
+
+        - Character:  CHAR, VARCHAR, CLOB
+
+        - Period:     PERIOD(DATE), PERIOD(TIME), PERIOD(TIMESTAMP)
+
+    Each category corresponds to a single test method which tests that both
+    the types are correctly interpreted, and that the type attributes at
+    instantiation are correctly communicated to the DB and preserved after
+    reflection. For types whose bind/result processing may be open to further
+    changes, insertion into columns with those types are also tested.
+    """
+
+    def setup(self):
+        self.conn     = testing.db.connect()
+        self.engine   = self.conn.engine
+        self.metadata = MetaData(bind=self.engine)
+        self.inspect  = reflection.Inspector.from_engine(self.engine)
+
+    def tearDown(self):
+        self.metadata.drop_all(self.engine)
+        self.conn.close()
+
+    def test_types_binary(self):
+        """
+        Tests the correctness of the Binary type(s) (BYTE, VARBYTE, BLOB)
+        implementation.
+
+        This is done by first creating a test table with columns corresponding
+        to each of the available Binary types (each with a certain attribute
+        configuration). Subsequently, the following tests are carried out:
+
+        (1) Inspect the column types by reflection to see that each column is
+            of the expected type and possesses the expected attribute values.
+
+        (2) Insert some byte data into each of the columns. This data is then
+            queried back and checked against the string that was previously
+            inserted into the row. The data received back is expected to have
+            been truncated if the byte length is longer than that specified by
+            the column.
+        """
+
+        col_types = {
+            'column_0': sqlalch_td.BYTE(length=10),
+            'column_1': sqlalch_td.VARBYTE(length=100),
+            'column_2': sqlalch_td.BLOB(length=1000)
+        }
+
+        # Create the test table with the above Binary types
+        cols  = [Column(name, type) for name, type in col_types.items()]
+        table = Table('table_test_types_binary', self.metadata, *cols)
+        self.metadata.create_all(checkfirst=False)
+
+        # test that each reflected column type has all the attribute values it
+        # was instantiated with
+        reflected_cols = self.inspect.get_columns('table_test_types_binary')
+        for col in reflected_cols:
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(col_types[col['name']].__dict__))
+
+        text = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed '   \
+               'do eiusmod tempor incididunt ut labore et dolore magna aliqua. ' \
+               'Ut enim ad minim veniam, quis nostrud exercitation ullamco '     \
+               'laboris nisi ut aliquip ex ea commodo consequat. Duis aute '     \
+               'irure dolor in reprehenderit in voluptate velit esse cillum '    \
+               'dolore eu fugiat nulla pariatur. Excepteur sint occaecat '       \
+               'cupidatat non proident, sunt in culpa qui officia deserunt '     \
+               'mollit anim id est laborum.'
+
+        text = str.encode(text)
+        # Insert the text above, encoded as a bytearray, into each column
+        self.conn.execute(table.insert(),
+            {'column_0': text,
+             'column_1': text,
+             'column_2': text})
+
+        res = self.engine.execute(table.select())
+
+        res = tuple(str(r) for r in res.fetchone())
+        assert(res[0] ==
+            "b'Lorem ipsu'")
+        assert(res[1] ==
+            "b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
+            "eiusmod tempor incididunt ut labore '")
+        assert(res[2] ==
+            "b'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do "
+            "eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim "
+            "ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut "
+            "aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit "
+            "in voluptate velit esse cillum dolore eu fugiat nulla pariatur. "
+            "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui "
+            "officia deserunt mollit anim id est laborum.'")
+
+    def test_types_numeric(self):
+        """
+        Tests the correctness of the Numeric type(s) (INTEGER, BIGINT, SMALLINT,
+        BYTEINT, FLOAT, DECIMAL, NUMBER) implementation.
+
+        This is done by creating a table where each column is a Numeric type
+        (for NUMBER and DECIMAL each has some precision and scale value). Then,
+        each of the columns are inspected via reflection to ensure that they are
+        all of the expected type and have the attribute values they were
+        instantiated with.
+        """
+
+        col_types = {
+            'column_0': sqlalch_td.INTEGER(),
+            'column_1': sqlalch_td.BIGINT(),
+            'column_2': sqlalch_td.SMALLINT(),
+            'column_3': sqlalch_td.BYTEINT(),
+            'column_5': sqlalch_td.FLOAT(),
+            'column_4': sqlalch_td.DECIMAL(precision=10, scale=5),
+            'column_6': sqlalch_td.NUMBER(precision=38, scale=20),
+            # 'column_7': sqlalch_td.NUMBER() TODO issue with -128 prec and scale
+        }
+
+        # Create the test table with the above Numeric types
+        cols  = [Column(name, type) for name, type in col_types.items()]
+        table = Table('table_test_types_numeric', self.metadata, *cols)
+        self.metadata.create_all(checkfirst=False)
+
+        # test that each reflected column type has all the attribute values it
+        # was instantiated with
+        reflected_cols = self.inspect.get_columns('table_test_types_numeric')
+        for col in reflected_cols:
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(col_types[col['name']].__dict__))
+
+    def test_types_datetime(self):
+        """
+        Tests the correctness of the Datetime type(s) (DATE, TIME, TIMESTAMP)
+        implementation.
+
+        This is done by creating a table where each column is a Datetime type
+        (for TIME and TIMESTAMP each has some precision and timezone value).
+        Then, each of the columns are inspected via reflection to ensure that
+        they are all of the expected type and have the attribute values they
+        were instantiated with.
+        """
+
+        col_types = {
+            'column_0': sqlalch_td.DATE(),
+            'column_1': sqlalch_td.TIME(precision=5, timezone=True),
+            'column_2': sqlalch_td.TIMESTAMP(precision=4, timezone=True)
+        }
+
+        # Create the test table with the above Datetime types
+        cols  = [Column(name, type) for name, type in col_types.items()]
+        table = Table('table_test_types_standard', self.metadata, *cols)
+        self.metadata.create_all(checkfirst=False)
+
+        # test that each reflected column type has all the attribute values it
+        # was instantiated with
+        reflected_cols = self.inspect.get_columns('table_test_types_standard')
+        for col in reflected_cols:
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(col_types[col['name']].__dict__))
 
     def test_types_interval(self):
         """
@@ -383,6 +640,10 @@ class TestTypesDDL(testing.fixtures.TestBase):
         }
 
         # Create the test table with the above Interval types
+        # Note the copy() is here because otherwise after table creation, the type
+        # instances defined in the col_types dict will each get populated with a
+        # "dispatcher" field which breaks the equality check further along in
+        # this test
         cols  = [Column(name, type.copy()) for name, type in col_types.items()]
         table = Table('table_test_types_interval', self.metadata, *cols)
         self.metadata.create_all(checkfirst=False)
@@ -395,7 +656,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
             assert(str(col['type'].__dict__) ==
                 str(col_types[col['name']].__dict__))
 
-        # Insert three rows of data into the test table
+        # Insert three rows of data (with different types) into the test table
         self.conn.execute(table.insert(),
             {'column_0':  None,
              'column_1':  None,
@@ -452,13 +713,71 @@ class TestTypesDDL(testing.fixtures.TestBase):
             "['20', '21-08', '20', '20', '20 20', '20 00:20', '20 00:00:20.2', "
             "'20', '20:20', '20:00:20.2', '20', '20:20.2', '20.2']")
 
+    def test_types_character(self):
+        """
+        Tests the correctness of the Character type(s) (CHAR, VARCHAR)
+        implementation.
+
+        This is done by creating a table where each column is a Character type
+        (with a certain combination of length and charset values). Then, each
+        of the columns are inspected via reflection to ensure that they are
+        all of the expected type and have the attribute values they were
+        instantiated with.
+        """
+
+        col_types = {
+            'column_0':  sqlalch_td.CHAR(length=1, charset='LATIN'),
+            'column_1':  sqlalch_td.CHAR(length=2, charset='UNICODE'),
+            'column_2':  sqlalch_td.CHAR(length=3, charset='KANJISJIS'),
+            'column_3':  sqlalch_td.CHAR(length=4, charset='GRAPHIC'),
+            'column_4':  sqlalch_td.VARCHAR(length=1, charset='LATIN'),
+            'column_5':  sqlalch_td.VARCHAR(length=2, charset='UNICODE'),
+            'column_6':  sqlalch_td.VARCHAR(length=3, charset='KANJISJIS'),
+            'column_7':  sqlalch_td.VARCHAR(length=4, charset='GRAPHIC'),
+            'column_8':  sqlalch_td.VARCHAR(charset='LATIN'),
+            'column_9':  sqlalch_td.VARCHAR(charset='UNICODE'),
+            'column_10': sqlalch_td.VARCHAR(charset='KANJISJIS'),
+            'column_11': sqlalch_td.VARCHAR(charset='GRAPHIC')
+        }
+
+        # Create the test table with the above Character types
+        cols  = [Column(name, type) for name, type in col_types.items()]
+        table = Table('table_test_types_character', self.metadata, *cols)
+        self.metadata.create_all(checkfirst=False)
+
+        # The types expected to be reflected back, this is here mostly to check
+        # that the LONG VARCHAR types correctly instantiate to its default
+        # length w.r.t. each charset
+        exp_types = {
+            'column_0':  sqlalch_td.CHAR(length=1, charset='LATIN'),
+            'column_1':  sqlalch_td.CHAR(length=2, charset='UNICODE'),
+            'column_2':  sqlalch_td.CHAR(length=3, charset='KANJISJIS'),
+            'column_3':  sqlalch_td.CHAR(length=4, charset='GRAPHIC'),
+            'column_4':  sqlalch_td.VARCHAR(length=1, charset='LATIN'),
+            'column_5':  sqlalch_td.VARCHAR(length=2, charset='UNICODE'),
+            'column_6':  sqlalch_td.VARCHAR(length=3, charset='KANJISJIS'),
+            'column_7':  sqlalch_td.VARCHAR(length=4, charset='GRAPHIC'),
+            'column_8':  sqlalch_td.VARCHAR(length=64000, charset='LATIN'),
+            'column_9':  sqlalch_td.VARCHAR(length=32000, charset='UNICODE'),
+            'column_10': sqlalch_td.VARCHAR(length=32000, charset='KANJISJIS'),
+            'column_11': sqlalch_td.VARCHAR(length=32000, charset='GRAPHIC')
+        }
+
+        # test that each reflected column type has all the attribute values it
+        # was instantiated with
+        reflected_cols = self.inspect.get_columns('table_test_types_character')
+        for col in reflected_cols:
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(exp_types[col['name']].__dict__))
+
     def test_types_period(self):
         """
         Tests the correctness of the Teradata Period type(s) implementation.
 
         This is done by first creating a test table with columns corresponding
-        to each of the available Period types (and their attribute
-        configurations). Subsequently, the following tests are carried out:
+        to each of the available Period types (each with a certain attribute
+        configuration). Subsequently, the following tests are carried out:
 
         (1) Inspect the column types by reflection to see that each column is
             of the expected type and possesses the expected attribute values.
@@ -501,7 +820,7 @@ class TestTypesDDL(testing.fixtures.TestBase):
             assert(str(col['type'].__dict__) ==
                 str(col_types[col['name']].__dict__))
 
-        # Insert two rows of data into the test table
+        # Insert two rows of data (with different types) into the test table
         self.conn.execute(table.insert(),
             {'column_0': 0,
              'column_1': "('2010-03-01', "
