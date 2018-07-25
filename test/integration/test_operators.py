@@ -23,8 +23,8 @@ class TestOperators(testing.fixtures.TestBase):
         cls.table = Table('t_test', cls.metadata,
             Column('c0', sqlalch_td.VARCHAR(100)),
             Column('c1', sqlalch_td.VARCHAR(100)),
-            Column('c2', sqlalch_td.Integer),
-            Column('c3', sqlalch_td.Integer))
+            Column('c2', sqlalch_td.INTEGER()),
+            Column('c3', sqlalch_td.INTEGER()))
         cls.metadata.create_all()
         cls.engine.execute(
             cls.table.insert(),

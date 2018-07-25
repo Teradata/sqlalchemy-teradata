@@ -5,9 +5,9 @@ from sqlalchemy.sql import sqltypes
 from sqlalchemy.schema import CreateColumn, CreateTable, CreateIndex, CreateSchema
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.plugin.pytestplugin import *
-from sqlalchemy_teradata.types import ( VARCHAR, CHAR, CLOB, NUMERIC, DECIMAL )
 from sqlalchemy_teradata.compiler import TDCreateTablePost, TDCreateTableSuffix
 
+import sqlalchemy_teradata as sqlalch_td
 import datetime as dt
 import enum
 
@@ -27,7 +27,7 @@ class TestCompileCreateColDDL(fixtures.TestBase):
         self.sqlalch_col_attrs = ['primary_key', 'unique', 'nullable', 'default', 'index']
 
     def test_create_column(self):
-        c = Column('column_name', VARCHAR(20, charset='GRAPHIC'))
+        c = Column('column_name', sqlalch_td.VARCHAR(20, charset='GRAPHIC'))
 
     @pytest.mark.xfail
     def test_col_attrs(self):
@@ -48,7 +48,7 @@ class TestCompileCreateTableDDL(fixtures.TestBase):
     def test_create_table(self):
         meta = MetaData(bind = self.td_engine)
         my_table = Table('tablename', meta,
-                        Column('column1', NUMERIC, primary_key=True),
+                        Column('column1', sqlalch_td.INTEGER, primary_key=True),
                         schema='database_name_or_user_name',
                         prefixes=['multiset', 'global temporary'])
 
@@ -136,7 +136,7 @@ class TestCompileCreateIndexDDL(fixtures.TestBase):
         Tests SQL compilation of inline (column) CREATE INDEX.
         """
         my_table = Table('tablename', self.metadata,
-                        Column('columnname', NUMERIC, index=True))
+                        Column('columnname', sqlalch_td.INTEGER, index=True))
         self.metadata.create_all()
 
         assert(self.last_compiled ==
@@ -148,7 +148,7 @@ class TestCompileCreateIndexDDL(fixtures.TestBase):
         Index schema construct.
         """
         my_table = Table('tablename', self.metadata,
-                        Column('columnname', NUMERIC))
+                        Column('columnname', sqlalch_td.INTEGER))
         Index('indexname', my_table.c.columnname)
         self.metadata.create_all()
 
@@ -160,8 +160,8 @@ class TestCompileCreateIndexDDL(fixtures.TestBase):
         Tests SQL compilation of CREATE INDEX with multiple indexes.
         """
         my_table = Table('tablename', self.metadata,
-                        Column('column1', NUMERIC),
-                        Column('column2', DECIMAL))
+                        Column('column1', sqlalch_td.INTEGER),
+                        Column('column2', sqlalch_td.DECIMAL))
         Index('indexname', my_table.c.column1, my_table.c.column2)
         self.metadata.create_all()
 
@@ -173,7 +173,7 @@ class TestCompileCreateIndexDDL(fixtures.TestBase):
         Tests SQL compilation of CREATE INDEX with a unique index.
         """
         my_table = Table('tablename', self.metadata,
-                        Column('columnname', NUMERIC, index=True, unique=True))
+                        Column('columnname', sqlalch_td.INTEGER, index=True, unique=True))
         self.metadata.create_all()
 
         assert(self.last_compiled ==
@@ -184,8 +184,8 @@ class TestCompileCreateIndexDDL(fixtures.TestBase):
         Tests SQL compilation of CREATE INDEX with multiple unique indexes.
         """
         my_table = Table('tablename', self.metadata,
-                        Column('column1', NUMERIC),
-                        Column('column2', DECIMAL))
+                        Column('column1', sqlalch_td.INTEGER),
+                        Column('column2', sqlalch_td.DECIMAL))
         Index('indexname', my_table.c.column1, my_table.c.column2, unique=True)
         self.metadata.create_all()
 
@@ -198,7 +198,7 @@ class TestCompileCreateIndexDDL(fixtures.TestBase):
         None to the Index constructor).
         """
         my_table = Table('tablename', self.metadata,
-                        Column('columnname', NUMERIC))
+                        Column('columnname', sqlalch_td.INTEGER))
         Index(None, my_table.c.columnname)
         self.metadata.create_all()
 
@@ -220,7 +220,7 @@ class TestCompileSuffixDDL(fixtures.TestBase):
         specific suffixes.
         """
         my_table = Table('tablename', self.metadata,
-            Column('columnname', NUMERIC),
+            Column('columnname', sqlalch_td.INTEGER),
             teradata_suffixes=
                 TDCreateTableSuffix().fallback() \
                                       .log() \
@@ -285,11 +285,11 @@ class TestCompilePostCreateDDL(fixtures.TestBase):
                 'd3': False
             }, 1)
         my_table = Table('tablename', self.metadata,
-            Column('c1', NUMERIC),
-            Column('c2', DECIMAL),
-            Column('c3', VARCHAR),
-            Column('c4', CHAR),
-            Column('c5', CLOB),
+            Column('c1', sqlalch_td.INTEGER),
+            Column('c2', sqlalch_td.DECIMAL),
+            Column('c3', sqlalch_td.VARCHAR),
+            Column('c4', sqlalch_td.CHAR),
+            Column('c5', sqlalch_td.CLOB),
             teradata_post_create=
                 TDCreateTablePost().no_primary_index() \
                                    .primary_index('indexname', True, ['c1']) \
