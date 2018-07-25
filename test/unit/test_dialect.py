@@ -1,10 +1,11 @@
-from sqlalchemy_teradata.dialect import TeradataDialect
-from sqlalchemy.testing import fixtures
 from sqlalchemy import testing
-from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
-from sqlalchemy_teradata.base import CreateView,DropView
-from sqlalchemy.sql import table, column, select
 from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey
+from sqlalchemy.sql import table, column, select
+from sqlalchemy.testing import fixtures
+from sqlalchemy.testing.plugin.pytestplugin import *
+from sqlalchemy_teradata.base import CreateView,DropView
+from sqlalchemy_teradata.dialect import TeradataDialect
 
 class TeradataDialectTest(fixtures.TestBase):
 
@@ -23,7 +24,7 @@ class TeradataDialectTest(fixtures.TestBase):
         self.test_table = Table(self.tbl_name, self.metadata,
                                 Column('id', Integer, primary_key=True),
                                 PrimaryKeyConstraint('id', name='my_pk'))
-        # Setup a test view 
+        # Setup a test view
         #self.test_view = CreateView(self.view_name, select([self.test_table.c.id.label('view_id')]))
 
         # Create tables
@@ -63,12 +64,15 @@ class TeradataDialectTest(fixtures.TestBase):
         for x in cons['constrained_columns']:
             x == self.test_table.c[x]
 
+    @pytest.mark.xfail
     def test_get_unique_constraint(self):
         assert False
 
+    @pytest.mark.xfail
     def test_get_foreign_keys(self):
         assert False
 
+    @pytest.mark.xfail
     def test_get_indexes(self):
         assert False
 
