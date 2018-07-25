@@ -5,41 +5,148 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.sql import sqltypes
 from sqlalchemy import types
+from sqlalchemy.sql import sqltypes
 
-import teradata.datatypes as td_dtypes
 import datetime
+import teradata.datatypes as td_dtypes
 
 
 class BYTEINT(sqltypes.Integer):
-    """
-    Teradata BYTEINT type.
+
+    """ Teradata BYTEINT type
+
     This type represents a one byte signed integer.
+
     """
+
     __visit_name__ = 'BYTEINT'
 
+    def __init__(self, **kwargs):
 
-class DECIMAL(sqltypes.DECIMAL):
+        """ Construct a BYTEINT Object """
+        super(BYTEINT, self).__init__(**kwargs)
 
-    """ Teradata Decimal/Numeric type """
 
-    def __init__(self, precision=5, scale=0, **kw):
-        """ Construct a Decimal type
-        :param precision: max number of digits that can be stored (range from 1 thru 38)
-        :param scale: number of fractional digits of :param precision: to the
-                    right of the decimal point  (range from 0 to :param precision:)
+class BYTE(sqltypes.BINARY):
+
+    """ Teradata BYTE type
+
+    This type represents a fixed-length binary string and is equivalent to
+    the BINARY SQL standard type.
+
+    """
+
+    __visit_name__ = 'BYTE'
+
+    def __init__(self, length=None, **kwargs):
+
+        """ Construct a BYTE object
+
+        :param length: Optional 1 to n. Specifies the number of bytes in the
+        fixed-length binary string. The maximum value for n is 64000.
+
         """
-        super(DECIMAL, self).__init__(precision=precision, scale=scale, **kw)
+        super(BYTE, self).__init__(length=length, **kwargs)
 
 
-class NUMERIC(sqltypes.NUMERIC):
+class VARBYTE(sqltypes.VARBINARY):
 
-    def __init__(self, precision=5, scale=0, **kw):
-        super(NUMERIC, self).__init__(precision=precision, scale=scale, **kw)
+    """ Teradata VARBYTE type
+
+    This type represents a variable-length binary string and is equivalent to
+    the VARBINARY SQL standard type.
+
+    """
+
+    __visit_name__ = 'VARBYTE'
+
+    def __init__(self, length=None, **kwargs):
+
+        """ Construct a VARBYTE object
+
+        :param length: Optional 1 to n. Specifies the number of bytes in the
+        fixed-length binary string. The maximum value for n is 64000.
+
+        """
+        super(VARBYTE, self).__init__(length=length, **kwargs)
+
+
+class BLOB(sqltypes.LargeBinary):
+
+    """ Teradata BLOB type
+
+    This type represents a large binary string of raw bytes. A binary large
+    object (BLOB) column can store binary objects, such as graphics, video
+    clips, files, and documents.
+
+    """
+
+    def __init__(self, length=None, multiplier=None, **kwargs):
+
+        """ Construct a BLOB object
+
+        :param length: Optional 1 to n. Specifies the number of bytes allocated
+        for the BLOB column. The maximum number of bytes is 2097088000, which
+        is the default if n is not specified.
+
+        :param multiplier: Optional value in ('K', 'M', 'G'). Indicates that the
+        length parameter n is specified in kilobytes (KB), megabytes (Mb),
+        or gigabytes (GB) respectively. Note the following constraints on n
+        hold for each of the allowable multiplier:
+
+            'K' is specified, n cannot exceed 2047937.
+            'M' is specified, n cannot exceed 1999.
+            'G' is specified, n must be 1.
+
+        If multiplier is None, the length is interepreted as bytes (B).
+
+        Note: If you specify a multiplier without specifying the length, the
+              multiplier argument will simply get ignored. On the other hand,
+              specifying a length without a multiplier will implicitly indicate
+              that the length value should be interpreted as bytes (B).
+
+        """
+        super(BLOB, self).__init__(length=length, **kwargs)
+        self.multiplier = multiplier
+
+
+class NUMBER(sqltypes.NUMERIC):
+
+    """ Teradata NUMBER type
+
+    This type represents a numeric value with optional precision and scale
+    limitations.
+
+    """
+
+    __visit_name__ = 'NUMBER'
+
+    def __init__(self, precision=None, scale=None, **kwargs):
+
+        """ Construct a NUMBER object
+
+        :param precision: max number of digits that can be stored. Valid values
+        range from 1 to 38.
+
+        :param scale: number of fractional digits of :param precision: to the
+        right of the decimal point. Valid values range from 0 to
+        :param precision:.
+
+        Note: Both parameters are optional. When both are left unspecified,
+              defaults to NUMBER with the system limits for precision and scale.
+
+        """
+        super(NUMBER, self).__init__(precision=precision, scale=scale, **kwargs)
 
 
 class TIME(sqltypes.TIME):
+
+    """ Teradata TIME type
+
+    This type identifies a field as a TIME value.
+
+    """
 
     def __init__(self, precision=6, timezone=False, **kwargs):
 
@@ -48,7 +155,7 @@ class TIME(sqltypes.TIME):
         :param precision: optional fractional seconds precision. A single digit
         representing the number of significant digits in the fractional
         portion of the SECOND field. Valid values range from 0 to 6 inclusive.
-        The default precision is 6
+        The default precision is 6.
 
         :param timezone: If set to True creates a Time WITH TIME ZONE type
 
@@ -59,13 +166,19 @@ class TIME(sqltypes.TIME):
 
 class TIMESTAMP(sqltypes.TIMESTAMP):
 
+    """ Teradata TIMESTAMP type
+
+    This type identifies a field as a TIMESTAMP value.
+
+    """
+
     def __init__(self, precision=6, timezone=False, **kwargs):
         """ Construct a TIMESTAMP stored as UTC in Teradata
 
         :param precision: optional fractional seconds precision. A single digit
         representing the number of significant digits in the fractional
         portion of the SECOND field. Valid values range from 0 to 6 inclusive.
-        The default precision is 6
+        The default precision is 6.
 
         :param timezone: If set to True creates a TIMESTAMP WITH TIME ZONE type
 
@@ -76,7 +189,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
 
 class _TDInterval(types.UserDefinedType):
 
-    """ Base class for the Teradata Interval sqltypes."""
+    """ Base class for the Teradata INTERVAL sqltypes """
 
     def __init__(self, precision=None, frac_precision=None, **kwargs):
         self.precision      = precision
@@ -102,64 +215,75 @@ class _TDInterval(types.UserDefinedType):
 
 class INTERVAL_YEAR(_TDInterval):
 
-    """ Teradata Interval Year data type
-        Identifies a field defining a period of time in years
+    """ Teradata INTERVAL YEAR type
+
+    This type identifies a field defining a period of time in years.
 
     """
     __visit_name__ = 'INTERVAL_YEAR'
 
     def __init__(self, precision=None, **kwargs):
 
-       """
-       precision: permitted range of digits for year ranging from 1 to 4
+       """ Construct an INTERVAL_YEAR object
+
+       :param precision: permitted range of digits for year ranging from 1 to 4
 
        """
        super(INTERVAL_YEAR, self).__init__(precision=precision)
 
 class INTERVAL_YEAR_TO_MONTH(_TDInterval):
 
-    """ Teradata Interval Year To Month data type
-        Identifies a field defining a period of time in years and months
+    """ Teradata INTERVAL YEAR TO MONTH type
+
+    This type identifies a field defining a period of time in years and months.
+
     """
 
     __visit_name__ = 'INTERVAL_YEAR_TO_MONTH'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for year ranging from 1 to 4
+        """ Construct an INTERVAL_YEAR_TO_MONTH object
+
+        :param precision: permitted range of digits for year ranging from 1 to 4
 
         """
         super(INTERVAL_YEAR_TO_MONTH, self).__init__(precision=precision)
 
 class INTERVAL_MONTH(_TDInterval):
 
-    """ Teradata Interval Month data type
-        Identifies a field defining a period of time in months
+    """ Teradata INTERVAL MONTH type
+
+    This type identifies a field defining a period of time in months.
+
     """
 
     __visit_name__ = 'INTERVAL_MONTH'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for month ranging from 1 to 4
+        """ Construct an INTERVAL_MONTH object
+
+        :param precision: permitted range of digits for month ranging from 1 to 4
 
         """
         super(INTERVAL_MONTH, self).__init__(precision=precision)
 
 class INTERVAL_DAY(_TDInterval):
 
-    """ Teradata Interval Day data type
-        Identifies a field defining a period of time in days
+    """ Teradata INTERVAL DAY type
+
+    This type identifies a field defining a period of time in days.
+
     """
 
     __visit_name__ = 'INTERVAL_DAY'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for day ranging from 1 to 4
+        """ Construct an INTERVAL_DAY object
+
+        :param precision: permitted range of digits for day ranging from 1 to 4
 
         """
         super(INTERVAL_DAY, self).__init__(precision=precision)
@@ -169,6 +293,7 @@ class INTERVAL_DAY(_TDInterval):
         """
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL DAY
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -178,16 +303,19 @@ class INTERVAL_DAY(_TDInterval):
 
 class INTERVAL_DAY_TO_HOUR(_TDInterval):
 
-    """ Teradata Interval Day To Hour data type
-        Identifies a field defining a period of time in days and hours
+    """ Teradata INTERVAL DAY TO HOUR type
+
+    This type identifies a field defining a period of time in days and hours.
+
     """
 
     __visit_name__ = 'INTERVAL_DAY_TO_HOUR'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for day ranging from 1 to 4
+        """ Construct an INTERVAL_DAY_TO_HOUR object
+
+        :param precision: permitted range of digits for day ranging from 1 to 4
 
         """
         super(INTERVAL_DAY_TO_HOUR, self).__init__(precision=precision)
@@ -198,6 +326,7 @@ class INTERVAL_DAY_TO_HOUR(_TDInterval):
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL DAY
         TO HOUR
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -208,16 +337,20 @@ class INTERVAL_DAY_TO_HOUR(_TDInterval):
 
 class INTERVAL_DAY_TO_MINUTE(_TDInterval):
 
-    """ Teradata Interval Day To Minute data type
-        Identifies a field defining a period of time in days, hours, and minutes
+    """ Teradata INTERVAL DAY TO MINUTE type
+
+    This type identifies a field defining a period of time in days, hours,
+    and minutes.
+
     """
 
-    __visit_name__= 'INTERVAL_DAY_TO_MINUTE'
+    __visit_name__ = 'INTERVAL_DAY_TO_MINUTE'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for day ranging from 1 to 4
+        """ Construct an INTERVAL_DAY_TO_MINUTE object
+
+        :param precision: permitted range of digits for day ranging from 1 to 4
 
         """
         super(INTERVAL_DAY_TO_MINUTE, self).__init__(precision=precision)
@@ -228,6 +361,7 @@ class INTERVAL_DAY_TO_MINUTE(_TDInterval):
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL DAY
         TO MINUTE
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -238,17 +372,22 @@ class INTERVAL_DAY_TO_MINUTE(_TDInterval):
 
 class INTERVAL_DAY_TO_SECOND(_TDInterval):
 
-    """ Teradata Interval Day To Second data type
-        Identifies a field during a period of time in days, hours, minutes, and seconds
+    """ Teradata INTERVAL DAY TO SECOND type
+
+    This type identifies a field during a period of time in days, hours, minutes,
+    and seconds.
+
     """
 
-    __visit_name__='INTERVAL_DAY_TO_SECOND'
+    __visit_name__ = 'INTERVAL_DAY_TO_SECOND'
 
     def __init__(self, precision=None, frac_precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for day ranging from 1 to 4
-        frac_precision: fracional_seconds_precision ranging from 0 to 6
+        """ Construct an INTERVAL_DAY_TO_SECOND object
+
+        :param precision: permitted range of digits for day ranging from 1 to 4
+
+        :param frac_precision: fracional_seconds_precision ranging from 0 to 6
 
         """
         super(INTERVAL_DAY_TO_SECOND, self).__init__(precision=precision,
@@ -260,6 +399,7 @@ class INTERVAL_DAY_TO_SECOND(_TDInterval):
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL DAY
         TO SECOND
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -270,16 +410,19 @@ class INTERVAL_DAY_TO_SECOND(_TDInterval):
 
 class INTERVAL_HOUR(_TDInterval):
 
-    """ Teradata Interval Hour data type
-        Identifies a field defining a period of time in hours
+    """ Teradata INTERVAL HOUR type
+
+    This type identifies a field defining a period of time in hours.
+
     """
 
-    __visit_name__='INTERVAL_HOUR'
+    __visit_name__ = 'INTERVAL_HOUR'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for hour ranging from 1 to 4
+        """ Construct an INTERVAL_HOUR object
+
+        :param precision: permitted range of digits for hour ranging from 1 to 4
 
         """
         super(INTERVAL_HOUR, self).__init__(precision=precision)
@@ -289,6 +432,7 @@ class INTERVAL_HOUR(_TDInterval):
         """
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL HOUR
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -299,16 +443,19 @@ class INTERVAL_HOUR(_TDInterval):
 
 class INTERVAL_HOUR_TO_MINUTE(_TDInterval):
 
-    """ Teradata Interval Hour To Minute data type
-        Identifies a field defining a period of time in hours and minutes
+    """ Teradata INTERVAL HOUR TO MINUTE type
+
+    This type identifies a field defining a period of time in hours and minutes.
+
     """
 
-    __visit_name__='INTERVAL_HOUR_TO_MINUTE'
+    __visit_name__ = 'INTERVAL_HOUR_TO_MINUTE'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for hour ranging from 1 to 4
+        """ Construct an INTERVAL_HOUR_TO_MINUTE object
+
+        :param precision: permitted range of digits for hour ranging from 1 to 4
 
         """
         super(INTERVAL_HOUR_TO_MINUTE, self).__init__(precision=precision)
@@ -319,6 +466,7 @@ class INTERVAL_HOUR_TO_MINUTE(_TDInterval):
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL HOUR
         TO MINUTE
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -331,17 +479,22 @@ class INTERVAL_HOUR_TO_MINUTE(_TDInterval):
 
 class INTERVAL_HOUR_TO_SECOND(_TDInterval):
 
-    """ Teradata Interval Hour To Second data type
-        Identifies a field defining a period of time in hours, minutes, and seconds
+    """ Teradata INTERVAL HOUR TO SECOND type
+
+    This type identifies a field defining a period of time in hours, minutes,
+    and seconds.
+
     """
 
-    __visit_name__='INTERVAL_HOUR_TO_SECOND'
+    __visit_name__ = 'INTERVAL_HOUR_TO_SECOND'
 
     def __init__(self, precision=None, frac_precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for hour ranging from 1 to 4
-        frac_precision: fracional_seconds_precision ranging from 0 to 6
+        """ Construct an INTERVAL_HOUR_TO_SECOND object
+
+        :param precision: permitted range of digits for hour ranging from 1 to 4
+
+        :param frac_precision: fracional_seconds_precision ranging from 0 to 6
 
         """
         super(INTERVAL_HOUR_TO_SECOND, self).__init__(precision=precision,
@@ -353,6 +506,7 @@ class INTERVAL_HOUR_TO_SECOND(_TDInterval):
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL HOUR
         TO SECOND
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -365,16 +519,19 @@ class INTERVAL_HOUR_TO_SECOND(_TDInterval):
 
 class INTERVAL_MINUTE(_TDInterval):
 
-    """ Teradata Interval Minute type
-        Identifies a field defining a period of time in minutes
+    """ Teradata INTERVAL MINUTE type
+
+    This type identifies a field defining a period of time in minutes.
+
     """
 
-    __visit_name__='INTERVAL_MINUTE'
+    __visit_name__ = 'INTERVAL_MINUTE'
 
     def __init__(self, precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for minute ranging from 1 to 4
+        """ Construct an INTERVAL_MINUTE object
+
+        :param precision: permitted range of digits for minute ranging from 1 to 4
 
         """
         super(INTERVAL_MINUTE, self).__init__(precision=precision)
@@ -384,6 +541,7 @@ class INTERVAL_MINUTE(_TDInterval):
         """
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL MINUTE
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -394,17 +552,21 @@ class INTERVAL_MINUTE(_TDInterval):
 
 class INTERVAL_MINUTE_TO_SECOND(_TDInterval):
 
-    """ Teradata Interval Minute To Second data type
-        Identifies a field defining a period of time in minutes and seconds
+    """ Teradata INTERVAL MINUTE TO SECOND type
+
+    This type identifies a field defining a period of time in minutes and seconds.
+
     """
 
-    __visit_name__='INTERVAL_MINUTE_TO_SECOND'
+    __visit_name__ = 'INTERVAL_MINUTE_TO_SECOND'
 
     def __init__(self, precision=None, frac_precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for minute ranging from 1 to 4
-        frac_precision: fracional_seconds_precision ranging from 0 to 6
+        """ Construct an INTERVAL_MINUTE_TO_SECOND object
+
+        :param precision: permitted range of digits for minute ranging from 1 to 4
+
+        :param frac_precision: fracional_seconds_precision ranging from 0 to 6
 
         """
         super(INTERVAL_MINUTE_TO_SECOND, self).__init__(precision=precision,
@@ -416,6 +578,7 @@ class INTERVAL_MINUTE_TO_SECOND(_TDInterval):
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL MINUTE
         TO SECOND
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -428,17 +591,21 @@ class INTERVAL_MINUTE_TO_SECOND(_TDInterval):
 
 class INTERVAL_SECOND(_TDInterval):
 
-    """ Teradata Interval Second data type
-        Identifies a field defining a period of time in seconds
+    """ Teradata INTERVAL SECOND type
+
+    This type identifies a field defining a period of time in seconds.
+
     """
 
     __visit_name__ = 'INTERVAL_SECOND'
 
     def __init__(self, precision=None, frac_precision=None, **kwargs):
 
-        """
-        precision: permitted range of digits for second ranging from 1 to 4
-        frac_precision: fractional_seconds_precision ranging from 0 to 6
+        """ Construct an INTERVAL_SECOND object
+
+        :param precision: permitted range of digits for second ranging from 1 to 4
+
+        :param frac_precision: fractional_seconds_precision ranging from 0 to 6
 
         """
         super(INTERVAL_SECOND, self).__init__(precision=precision,
@@ -449,6 +616,7 @@ class INTERVAL_SECOND(_TDInterval):
         """
         Handles the conversion from a datetime.timedelta object to an Interval
         object appropriate for inserting into a column with type INTERVAL SECOND
+
         """
         def process(value):
             if isinstance(value, datetime.timedelta):
@@ -460,7 +628,7 @@ class INTERVAL_SECOND(_TDInterval):
 
 class _TDPeriod(types.UserDefinedType):
 
-    """ Base class for the Teradata Period sqltypes."""
+    """ Base class for the Teradata Period sqltypes """
 
     def __init__(self, format=None, **kwargs):
         self.format = format
@@ -485,35 +653,43 @@ class _TDPeriod(types.UserDefinedType):
 
 class PERIOD_DATE(_TDPeriod):
 
-    """ Teradata Period Date data type
-        Identifies a field defining a duration with a beginning and end date
+    """ Teradata PERIOD DATE type
+
+    This type identifies a field defining a duration with a beginning and end date.
+
     """
 
     __visit_name__ = 'PERIOD_DATE'
 
     def __init__(self, format=None, **kwargs):
 
-        """
-        format: format of the date, e.g. 'yyyy-mm-dd'
+        """ Construct a PERIOD_DATE object
+
+        :param format: format of the date, e.g. 'yyyy-mm-dd'
 
         """
         super(PERIOD_DATE, self).__init__(format=format, **kwargs)
 
 class PERIOD_TIME(_TDPeriod):
 
-    """ Teradata Period Time data type
-        Identifies a field defining a duration with a beginning and end time
+    """ Teradata PERIOD TIME type
+
+    This type identifies a field defining a duration with a beginning and end time.
+
     """
 
     __visit_name__ = 'PERIOD_TIME'
 
     def __init__(self, format=None, frac_precision=None, timezone=False, **kwargs):
 
-        """
-        format:         format of the time, e.g. 'HH:MI:SS.S(6)' and
-                        'HH:MI:SS.S(6)Z' (with timezone)
-        frac_precision: fractional_seconds_precision ranging from 0 to 6
-        timezone:       true if WITH TIME ZONE, false otherwise
+        """ Construct a PERIOD_TIME object
+
+        :param format: format of the time, e.g. 'HH:MI:SS.S(6)' and
+        'HH:MI:SS.S(6)Z' (with timezone)
+
+        :param frac_precision: fractional_seconds_precision ranging from 0 to 6
+
+        :param timezone: true if WITH TIME ZONE, false otherwise
 
         """
         super(PERIOD_TIME, self).__init__(format=format, **kwargs)
@@ -522,19 +698,24 @@ class PERIOD_TIME(_TDPeriod):
 
 class PERIOD_TIMESTAMP(_TDPeriod):
 
-    """ Teradata Period Timestamp data type
-        Identifies a field defining a duration with a beginning and end timestamp
+    """ Teradata PERIOD TIMESTAMP type
+
+    This type identifies a field defining a duration with a beginning and end timestamp.
+
     """
 
     __visit_name__ = 'PERIOD_TIMESTAMP'
 
     def __init__(self, format=None, frac_precision=None, timezone=False, **kwargs):
 
-        """
-        format:         format of the timestamp, e.g. 'YYYY-MM-DDBHH:MI:SS.S(6)'
-                        and 'YYYY-MM-DDBHH:MI:SS.S(6)Z' (with timezone)
-        frac_precision: fractional_seconds_precision ranging from 0 to 6
-        timezone:       true if WITH TIME ZONE, false otherwise
+        """ Construct a PERIOD_TIMESTAMP object
+
+        :param format: format of the timestamp, e.g. 'YYYY-MM-DDBHH:MI:SS.S(6)'
+        and 'YYYY-MM-DDBHH:MI:SS.S(6)Z' (with timezone)
+
+        :param frac_precision: fractional_seconds_precision ranging from 0 to 6
+
+        :param timezone: true if WITH TIME ZONE, false otherwise
 
         """
         super(PERIOD_TIMESTAMP, self).__init__(format=format, **kwargs)
@@ -544,9 +725,16 @@ class PERIOD_TIMESTAMP(_TDPeriod):
 
 class CHAR(sqltypes.CHAR):
 
+    """ Teradata CHAR type
+
+    This type represents a fixed-length character string for Teradata Database
+    internal character storage.
+
+    """
+
     def __init__(self, length=1, charset=None, **kwargs):
 
-        """ Construct a Char
+        """ Construct a CHAR object
 
         :param length: number of characters or bytes allocated. Maximum value
         for n depends on the character set. For LATIN - 64000 characters,
@@ -570,9 +758,18 @@ class CHAR(sqltypes.CHAR):
 
 class VARCHAR(sqltypes.String):
 
+    """ Teradata VARCHAR type
+
+    This type represents a variable length character string of length 0 to n
+    for Teradata Database internal character storage. LONG VARCHAR specifies
+    the longest permissible variable length character string for Teradata
+    Database internal character storage.
+
+    """
+
     def __init__(self, length=None, charset=None, **kwargs):
 
-        """Construct a Varchar
+        """ Construct a VARCHAR object
 
         :param length: Optional 0 to n. If None, LONG is used
         (the longest permissible variable length character string)
@@ -588,9 +785,16 @@ class VARCHAR(sqltypes.String):
 
 class CLOB(sqltypes.CLOB):
 
+    """ Teradata CLOB type
+
+    This type represents a large character string. A character large object
+    (CLOB) column can store character data, such as simple text or HTML.
+
+    """
+
     def __init__(self, length=None, charset=None, multiplier=None, **kwargs):
 
-        """Construct a Clob
+        """ Construct a CLOB object
 
         :param length: Optional length for clob. For Latin server character set,
         length cannot exceed 2097088000. For Unicode server character set,
@@ -607,11 +811,8 @@ class CLOB(sqltypes.CLOB):
 
         :param charset: LATIN (fixed 8-bit characters ASCII ISO 8859 Latin1 or ISO 8859 Latin9)
         or UNICODE (fixed 16-bit characters from the UNICODE 6.0 standard)
+
         """
         super(CLOB, self).__init__(length=length, **kwargs)
-        self.charset = charset
-        self.multiplier=multiplier
-
-
-class BLOB(sqltypes.LargeBinary):
-        pass
+        self.charset    = charset
+        self.multiplier = multiplier
