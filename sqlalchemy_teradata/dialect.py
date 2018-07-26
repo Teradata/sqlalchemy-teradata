@@ -5,46 +5,54 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy.engine import default
+from itertools import groupby
 from sqlalchemy import pool, String, Numeric
+from sqlalchemy import Table, Column, Index
+from sqlalchemy.engine import default
 from sqlalchemy.sql import select, and_, or_
+from sqlalchemy.sql.expression import text, table, column, asc
 from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler, TeradataTypeCompiler
 from sqlalchemy_teradata.base import TeradataIdentifierPreparer, TeradataExecutionContext
 from sqlalchemy_teradata.data_type_converter import TDDataTypeConverter
-from sqlalchemy.sql.expression import text, table, column, asc
-from sqlalchemy import Table, Column, Index
+
+import sqlalchemy_teradata as sqlalch_td
 import sqlalchemy.types as sqltypes
 import sqlalchemy_teradata.types as tdtypes
-from itertools import groupby
+
 
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
     None: sqltypes.NullType,
 
-    'uf': sqltypes.NCHAR,
-    'uv': sqltypes.NVARCHAR,
+    # SQL standard types (unmodified)
     'i' : sqltypes.INTEGER,
     'i2': sqltypes.SMALLINT,
     'i8': sqltypes.BIGINT,
+    'd' : sqltypes.DECIMAL,
     'f' : sqltypes.FLOAT,
     'da': sqltypes.DATE,
+
+    # Numeric types
+    'i1': tdtypes.BYTEINT,
+    'n' : tdtypes.NUMBER,
+
+    # Character types
     'cf': tdtypes.CHAR,
     'cv': tdtypes.VARCHAR,
     'co': tdtypes.CLOB,
-    'n' : tdtypes.NUMERIC,
-    'd' : tdtypes.DECIMAL,
-    'i1': tdtypes.BYTEINT,
+
+    # Datetime types
     'ts': tdtypes.TIMESTAMP,
-    'sz': tdtypes.TIMESTAMP,    #Added timestamp with timezone
+    'sz': tdtypes.TIMESTAMP,    # Timestamp with timezone
     'at': tdtypes.TIME,
-    'tz': tdtypes.TIME,         #Added time with timezone
+    'tz': tdtypes.TIME,         # Time with timezone
 
-    #Experimental - Binary
-    'bf': sqltypes.BINARY,
-    'bv': sqltypes.VARBINARY,
-    'bo': sqltypes.BLOB,
+    # Binary types
+    'bf': tdtypes.BYTE,
+    'bv': tdtypes.VARBYTE,
+    'bo': tdtypes.BLOB,
 
-    #Interval Types
+    # Interval types
     'dh': tdtypes.INTERVAL_DAY_TO_HOUR,
     'dm': tdtypes.INTERVAL_DAY_TO_MINUTE,
     'ds': tdtypes.INTERVAL_DAY_TO_SECOND,
@@ -59,13 +67,13 @@ ischema_names = {
     'ym': tdtypes.INTERVAL_YEAR_TO_MONTH,
     'yr': tdtypes.INTERVAL_YEAR,
 
-    #Period Types
+    # Period types
     'pd': tdtypes.PERIOD_DATE,
     'pt': tdtypes.PERIOD_TIME,
     'pz': tdtypes.PERIOD_TIME,
     'ps': tdtypes.PERIOD_TIMESTAMP,
     'pm': tdtypes.PERIOD_TIMESTAMP
-} # TODO BLOB
+}
 
 stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
 
@@ -156,11 +164,15 @@ class TeradataDialect(default.DefaultDialect):
             t = ischema_names[tc]
 
             if issubclass(t, sqltypes.String):
-                return t(length=kw['length']/2 if kw['chartype']=='UNICODE' else kw['length'],\
-                            charset=kw['chartype'])
+                return t(
+                    length=int(kw['length'] / 2) if
+                            (kw['chartype'] == 'UNICODE' or
+                             kw['chartype'] == 'GRAPHIC')
+                        else kw['length'],
+                    charset=kw['chartype'])
 
             elif issubclass(t, sqltypes.Float):
-                return t(precision=kw['prec'])
+                return t()
 
             elif issubclass(t, sqltypes.Numeric):
                 return t(precision=kw['prec'], scale=kw['scale'])
@@ -177,6 +189,10 @@ class TeradataDialect(default.DefaultDialect):
 
                 #prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
                 return t(precision=prec,timezone=tz)
+
+            elif issubclass(t, sqltypes._Binary):
+                # TODO currently BLOBs can't recover the unit, only the length
+                return t(length=kw['length'])
 
             elif issubclass(t, tdtypes._TDInterval):
                 return t(precision=kw['prec'], frac_precision=kw['scale'])
@@ -198,31 +214,34 @@ class TeradataDialect(default.DefaultDialect):
         Resolves the column information for get_columns given a row.
         """
         chartype = {
-                  0: None,
-                  1: 'LATIN',
-                  2: 'UNICODE',
-                  3: 'KANJISJIS',
-                  4: 'GRAPHIC'}
+            0: None,
+            1: 'LATIN',
+            2: 'UNICODE',
+            3: 'KANJISJIS',
+            4: 'GRAPHIC'
+        }
 
-        #Handle unspecified characterset and disregard chartypes specified for non-character types (e.g. binary, json)
-        typ = self._resolve_type(row['columntype'],\
-                                    length=int(row['columnlength'] or 0),\
-                                    chartype=chartype[row['chartype'] if row['chartype'] in stringtypes else 0],\
-                                    prec=int(row['decimaltotaldigits'] or 0),\
-                                    scale=int(row['decimalfractionaldigits'] or 0),\
-                                    fmt=row['columnformat'])
+        # Handle unspecified characterset and disregard chartypes specified for
+        # non-character types (e.g. binary, json)
+        typ = self._resolve_type(row['columntype'],
+            length=int(row['columnlength'] or 0),
+            chartype=chartype[row['chartype']
+                if row['columntype'].lower() in stringtypes \
+                else 0],
+            prec=int(row['decimaltotaldigits'] or 0),
+            scale=int(row['decimalfractionaldigits'] or 0),
+            fmt=row['columnformat'])
 
         autoinc = row['idcoltype'] in ('GA', 'GD')
 
         return {
-                'name': self.normalize_name(row['columnname']),
-                'type': typ,
-                'nullable': row['nullable'] == u'Y',
-                'default': row['defaultvalue'],
-                'attrs': {
-                    'columnformat':row['columnformat']},
-                'autoincrement': autoinc
-               }
+            'name': self.normalize_name(row['columnname']),
+            'type': typ,
+            'nullable': row['nullable'] == u'Y',
+            'default': row['defaultvalue'],
+            'attrs': {'columnformat':row['columnformat']},
+            'autoincrement': autoinc
+        }
 
 
     def get_columns(self, connection, table_name, schema=None, **kw):
