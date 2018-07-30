@@ -53,8 +53,11 @@ class TeradataCompiler(compiler.SQLCompiler):
             binary.operator = operators.custom_op(
                 opstring=custom_ops[binary.operator])
 
-        return compiler.SQLCompiler.visit_binary(
-            self, binary, override_operator, eager_grouping, **kw)
+        return super(TeradataCompiler, self).\
+                 visit_binary(binary,
+                              override_operator=override_operator,
+                              eager_grouping=eager_grouping,
+                              **kw)
 
     def limit_clause(self, select, **kwargs):
         """Limit after SELECT is implemented in get_select_precolumns"""
