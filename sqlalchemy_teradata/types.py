@@ -9,6 +9,7 @@ from sqlalchemy import types
 from sqlalchemy.sql import sqltypes
 
 import datetime
+import warnings
 import teradata.datatypes as td_dtypes
 
 
@@ -28,7 +29,33 @@ class BYTEINT(sqltypes.Integer):
         super(BYTEINT, self).__init__(**kwargs)
 
 
-class BYTE(sqltypes.BINARY):
+class _TDBinary(sqltypes._Binary):
+
+    class TruncationWarning(UserWarning):
+        pass
+
+    def bind_processor(self, dialect):
+        if dialect.dbapi is None:
+            return None
+
+        DBAPIBinary = dialect.dbapi.Binary
+
+        def process(value):
+            if value is not None:
+                value = DBAPIBinary(value)
+                # TODO reflect to get updated self.length?
+                if len(value) > self.length:
+                    warnings.warn(
+                        'Attempting to insert an item that is larger than the space '
+                            'allocated for this column. Data may get truncated.',
+                        self.TruncationWarning)
+                return value
+            else:
+                return None
+        return process
+
+
+class BYTE(_TDBinary, sqltypes.BINARY):
 
     """ Teradata BYTE type
 
@@ -50,7 +77,7 @@ class BYTE(sqltypes.BINARY):
         super(BYTE, self).__init__(length=length, **kwargs)
 
 
-class VARBYTE(sqltypes.VARBINARY):
+class VARBYTE(_TDBinary, sqltypes.VARBINARY):
 
     """ Teradata VARBYTE type
 
@@ -72,7 +99,7 @@ class VARBYTE(sqltypes.VARBINARY):
         super(VARBYTE, self).__init__(length=length, **kwargs)
 
 
-class BLOB(sqltypes.LargeBinary):
+class BLOB(_TDBinary, sqltypes.LargeBinary):
 
     """ Teradata BLOB type
 
