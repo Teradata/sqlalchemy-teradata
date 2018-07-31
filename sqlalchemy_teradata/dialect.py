@@ -14,6 +14,7 @@ from sqlalchemy.sql.expression import text, table, column, asc
 from sqlalchemy_teradata.compiler import TeradataCompiler, TeradataDDLCompiler, TeradataTypeCompiler
 from sqlalchemy_teradata.base import TeradataIdentifierPreparer, TeradataExecutionContext
 from sqlalchemy_teradata.data_type_converter import TDDataTypeConverter
+from sqlalchemy_teradata.resolver import TeradataTypeResolver
 
 import sqlalchemy_teradata as sqlalch_td
 import sqlalchemy.types as sqltypes
@@ -29,11 +30,11 @@ ischema_names = {
     'i2': sqltypes.SMALLINT,
     'i8': sqltypes.BIGINT,
     'd' : sqltypes.DECIMAL,
-    'f' : sqltypes.FLOAT,
     'da': sqltypes.DATE,
 
     # Numeric types
     'i1': tdtypes.BYTEINT,
+    'f' : tdtypes.FLOAT,
     'n' : tdtypes.NUMBER,
 
     # Character types
@@ -152,60 +153,13 @@ class TeradataDialect(default.DefaultDialect):
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchone()
         return res is not None
 
-    # TODO Refactor this whole thing
     def _resolve_type(self, t, **kw):
         """
         Resolve types for String, Numeric, Date/Time, etc. columns
         """
         tc = self.normalize_name(t)
-        # print(tc, kw)
         if tc in ischema_names:
-            # print(t,ischema_names[t])
-            t = ischema_names[tc]
-
-            if issubclass(t, sqltypes.String):
-                return t(
-                    length=int(kw['length'] / 2) if
-                            (kw['chartype'] == 'UNICODE' or
-                             kw['chartype'] == 'GRAPHIC')
-                        else kw['length'],
-                    charset=kw['chartype'])
-
-            elif issubclass(t, sqltypes.Float):
-                return t()
-
-            elif issubclass(t, sqltypes.Numeric):
-                return t(precision=kw['prec'], scale=kw['scale'])
-
-            elif issubclass(t, sqltypes.Time) or issubclass(t, sqltypes.DateTime):
-                #Timezone
-                tz=kw['fmt'][-1]=='Z'
-
-                #Precision
-                prec = kw['fmt']
-                #For some timestamps and dates, there is no precision, or indicatd in scale
-                prec = prec[prec.index('(') + 1: prec.index(')')] if '(' in prec else 0
-                prec = kw['scale'] if prec=='F' else int(prec)
-
-                #prec = int(prec[prec.index('(') + 1: prec.index(')')]) if '(' in prec else 0
-                return t(precision=prec,timezone=tz)
-
-            elif issubclass(t, sqltypes._Binary):
-                # TODO currently BLOBs can't recover the unit, only the length
-                return t(length=kw['length'])
-
-            elif issubclass(t, tdtypes._TDInterval):
-                return t(precision=kw['prec'], frac_precision=kw['scale'])
-
-            elif issubclass(t, tdtypes.PERIOD_DATE):
-                return t(format=kw['fmt'])
-
-            elif issubclass(t, tdtypes.PERIOD_TIME) or issubclass(t, tdtypes.PERIOD_TIMESTAMP):
-                tz = tc == 'pz' or tc == 'pm'
-                return t(format=kw['fmt'], frac_precision=kw['scale'], timezone=tz)
-
-            else:
-                return t() # For types like Integer, ByteInt
+            return TeradataTypeResolver().process(ischema_names[tc], tc=tc, **kw)
 
         return ischema_names[None]
 
