@@ -179,6 +179,9 @@ class TestCompileTDTypes(fixtures.TestBase):
         assert(self._compile(INTERVAL_MINUTE())           == 'INTERVAL MINUTE')
         assert(self._compile(INTERVAL_MINUTE_TO_SECOND()) == 'INTERVAL MINUTE TO SECOND')
         assert(self._compile(INTERVAL_SECOND())           == 'INTERVAL SECOND')
+        assert(self._compile(PERIOD_DATE())               == 'PERIOD(DATE)')
+        assert(self._compile(PERIOD_TIME())               == 'PERIOD(TIME)')
+        assert(self._compile(PERIOD_TIMESTAMP())          == 'PERIOD(TIMESTAMP)')
 
     def test_compile_character(self):
         """
@@ -260,3 +263,38 @@ class TestCompileTDTypes(fixtures.TestBase):
 
                 assert(self._compile(INTERVAL_SECOND(prec, fsec)) ==
                     'INTERVAL SECOND({}, {})'.format(prec, fsec))
+
+class TestStrTDTypes(fixtures.TestBase):
+
+    def test_str_default(self):
+        """
+        Test printing out (calling str) on each of the data types implemented
+        in types.py.
+        """
+
+        assert(str(TIME())                      == 'TIME')
+        assert(str(TIMESTAMP())                 == 'TIMESTAMP')
+        assert(str(CHAR())                      == 'CHAR')
+        assert(str(VARCHAR())                   == 'VARCHAR')
+        assert(str(CLOB())                      == 'CLOB')
+        assert(str(NUMBER())                    == 'NUMBER')
+        assert(str(BYTEINT())                   == 'BYTEINT')
+        assert(str(BYTE())                      == 'BYTE')
+        assert(str(VARBYTE())                   == 'VARBYTE')
+        assert(str(BLOB())                      == 'BLOB')
+        assert(str(INTERVAL_YEAR())             == 'INTERVAL YEAR')
+        assert(str(INTERVAL_YEAR_TO_MONTH())    == 'INTERVAL YEAR TO MONTH')
+        assert(str(INTERVAL_MONTH())            == 'INTERVAL MONTH')
+        assert(str(INTERVAL_DAY())              == 'INTERVAL DAY')
+        assert(str(INTERVAL_DAY_TO_HOUR())      == 'INTERVAL DAY TO HOUR')
+        assert(str(INTERVAL_DAY_TO_MINUTE())    == 'INTERVAL DAY TO MINUTE')
+        assert(str(INTERVAL_DAY_TO_SECOND())    == 'INTERVAL DAY TO SECOND')
+        assert(str(INTERVAL_HOUR())             == 'INTERVAL HOUR')
+        assert(str(INTERVAL_HOUR_TO_MINUTE())   == 'INTERVAL HOUR TO MINUTE')
+        assert(str(INTERVAL_HOUR_TO_SECOND())   == 'INTERVAL HOUR TO SECOND')
+        assert(str(INTERVAL_MINUTE())           == 'INTERVAL MINUTE')
+        assert(str(INTERVAL_MINUTE_TO_SECOND()) == 'INTERVAL MINUTE TO SECOND')
+        assert(str(INTERVAL_SECOND())           == 'INTERVAL SECOND')
+        assert(str(PERIOD_DATE())               == 'PERIOD DATE')
+        assert(str(PERIOD_TIME())               == 'PERIOD TIME')
+        assert(str(PERIOD_TIMESTAMP())          == 'PERIOD TIMESTAMP')
