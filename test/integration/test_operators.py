@@ -4,6 +4,8 @@ from sqlalchemy import sql
 from sqlalchemy.sql import operators
 from sqlalchemy.testing.plugin.pytestplugin import *
 
+import datetime
+import itertools
 import sqlalchemy_teradata as sqlalch_td
 
 """
@@ -263,3 +265,78 @@ class TestOperators(testing.fixtures.TestBase):
 
         # Check that the scalar from the last row is 'foobar'
         assert([row[0] for row in res][-1] == 'foobar')
+
+
+class TestAffinity(testing.fixtures.TestBase):
+
+    def setup_class(cls):
+        """
+        Creates a test table to be used for testing type-operator affinities.
+        """
+        cls.conn     = testing.db.connect()
+        cls.engine   = cls.conn.engine
+        cls.metadata = MetaData(bind=cls.engine)
+
+        cls.table_numeric = Table('t_test_numeric', cls.metadata,
+            Column('c0', sqlalch_td.INTEGER()),
+            Column('c1', sqlalch_td.SMALLINT()),
+            Column('c2', sqlalch_td.BIGINT()),
+            Column('c3', sqlalch_td.DECIMAL()),
+            Column('c3', sqlalch_td.FLOAT()),
+            Column('c5', sqlalch_td.NUMBER()),
+            Column('c6', sqlalch_td.BYTEINT()))
+        cls.table_character = Table('t_test_character', cls.metadata,
+            Column('c0', sqlalch_td.CHAR()),
+            Column('c1', sqlalch_td.VARCHAR()),
+            Column('c2', sqlalch_td.CLOB()))
+        cls.table_datetime = Table('t_test_datetime', cls.metadata,
+            Column('c0', sqlalch_td.DATE()),
+            Column('c1', sqlalch_td.TIME()),
+            Column('c2', sqlalch_td.TIMESTAMP()))
+        cls.table_binary = Table('t_test_binary', cls.metadata,
+            Column('c0', sqlalch_td.BYTE()),
+            Column('c1', sqlalch_td.VARBYTE(10)),
+            Column('c2', sqlalch_td.BLOB()))
+        cls.metadata.create_all()
+
+        cls.engine.execute(cls.table_numeric.insert(),
+            {'c0': 1, 'c1': 2, 'c2': 3, 'c3': 4,
+             'c4': 5, 'c5': 6, 'c6': 7})
+        cls.engine.execute(cls.table_character.insert(),
+            {'c0': 'fizzbuzz', 'c1': 'foobar',
+             'c2': 'the quick brown fox jumps over the lazy dog'})
+        cls.engine.execute(cls.table_datetime.insert(),
+            {'c0': datetime.date(year=1912, month=6, day=23),
+             'c1': datetime.time(hour=15, minute=37, second=25),
+             'c2': datetime.datetime(year=1912, month=6, day=23,
+                                     hour=15, minute=37, second=25)})
+        cls.engine.execute(cls.table_binary.insert(),
+            {'c0': 123, 'c1': 456, 'c2': 789})
+
+    def teardown_class(cls):
+        cls.metadata.drop_all(cls.engine)
+        cls.conn.close()
+
+    def setup(self):
+        self.conn     = testing.db.connect()
+        self.engine   = self.conn.engine
+        self.metadata = MetaData(bind=self.engine)
+
+        self.table_numeric   = TestAffinity.table_numeric
+        self.table_character = TestAffinity.table_character
+        self.table_datetime  = TestAffinity.table_datetime
+        self.table_binary    = TestAffinity.table_binary
+
+    def tearDown(self):
+        self.conn.invalidate()
+        self.conn.close()
+
+    def test_arithmetic_affinity_on_numeric(self):
+        ops = (operators.add, operators.sub, operators.mul, operators.div,
+               operators.mod)
+
+        res = self.engine.execute(
+            sql.select([op(cols[0], cols[1]) for cols, op in
+                itertools.product(
+                    itertools.combinations(
+                        self.table_numeric.c, r=2), ops)]))
