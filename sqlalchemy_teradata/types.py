@@ -88,7 +88,7 @@ class VARBYTE(_TDType, sqltypes.VARBINARY):
         super(VARBYTE, self).__init__(length=length, **kwargs)
 
 
-class BLOB(_TDType, sqltypes.LargeBinary):
+class BLOB(_TDType, sqltypes.BLOB):
 
     """ Teradata BLOB type
 
@@ -97,8 +97,6 @@ class BLOB(_TDType, sqltypes.LargeBinary):
     clips, files, and documents.
 
     """
-
-    __visit_name__ = 'BLOB'
 
     def __init__(self, length=None, multiplier=None, **kwargs):
 
@@ -789,7 +787,7 @@ class CHAR(_TDType, sqltypes.CHAR):
         self.charset = charset
 
 
-class VARCHAR(_TDType, sqltypes.String):
+class VARCHAR(_TDType, sqltypes.VARCHAR):
 
     """ Teradata VARCHAR type
 
@@ -799,8 +797,6 @@ class VARCHAR(_TDType, sqltypes.String):
     Database internal character storage.
 
     """
-
-    __visit_name__ = 'VARCHAR'
 
     def __init__(self, length=None, charset=None, **kwargs):
 
