@@ -155,11 +155,12 @@ class TeradataDialect(default.DefaultDialect):
 
     def _resolve_type(self, t, **kw):
         """
-        Resolve types for String, Numeric, Date/Time, etc. columns
+        Resolves the types for String, Numeric, Date/Time, etc. columns.
         """
         tc = self.normalize_name(t)
         if tc in ischema_names:
-            return TeradataTypeResolver().process(ischema_names[tc], tc=tc, **kw)
+            type_ = ischema_names[tc]
+            return TeradataTypeResolver().process(type_, typecode=tc, **kw)
 
         return ischema_names[None]
 
