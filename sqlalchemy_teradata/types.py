@@ -13,7 +13,23 @@ import warnings
 import teradata.datatypes as td_dtypes
 
 
-class BYTEINT(sqltypes.Integer):
+class _TDType:
+
+    """ Teradata Data Type
+
+    Identifies a Teradata data type. Currently used to override __str__
+    behavior such that the type will get printed without being compiled by the
+    GenericTypeCompiler (which would otherwise result in an exception).
+    """
+
+    def _parse_name(self, name):
+        return name.replace('_', ' ')
+
+    def __str__(self):
+        return self._parse_name(self.__class__.__name__)
+
+
+class BYTEINT(_TDType, sqltypes.Integer):
 
     """ Teradata BYTEINT type
 
@@ -29,7 +45,7 @@ class BYTEINT(sqltypes.Integer):
         super(BYTEINT, self).__init__(**kwargs)
 
 
-class _TDBinary(sqltypes._Binary):
+class _TDBinary(_TDType, sqltypes._Binary):
 
     """ Teradata Binary Types
 
@@ -118,7 +134,7 @@ class VARBYTE(_TDBinary, sqltypes.VARBINARY):
         super(VARBYTE, self).__init__(length=length, **kwargs)
 
 
-class BLOB(_TDBinary, sqltypes.LargeBinary):
+class BLOB(_TDBinary, sqltypes.BLOB):
 
     """ Teradata BLOB type
 
@@ -157,7 +173,22 @@ class BLOB(_TDBinary, sqltypes.LargeBinary):
         self.multiplier = multiplier
 
 
-class NUMBER(sqltypes.NUMERIC):
+class FLOAT(_TDType, sqltypes.FLOAT):
+
+    """ Teradata FLOAT type
+
+    This type represent values in sign/magnitude form ranging from
+    2.226 x 10^-308 to 1.797 x 10^308.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a FLOAT object """
+        super(FLOAT, self).__init__(**kwargs)
+
+
+class NUMBER(_TDType, sqltypes.NUMERIC):
 
     """ Teradata NUMBER type
 
@@ -186,7 +217,7 @@ class NUMBER(sqltypes.NUMERIC):
         super(NUMBER, self).__init__(precision=precision, scale=scale, **kwargs)
 
 
-class TIME(sqltypes.TIME):
+class TIME(_TDType, sqltypes.TIME):
 
     """ Teradata TIME type
 
@@ -210,7 +241,7 @@ class TIME(sqltypes.TIME):
         self.precision = precision
 
 
-class TIMESTAMP(sqltypes.TIMESTAMP):
+class TIMESTAMP(_TDType, sqltypes.TIMESTAMP):
 
     """ Teradata TIMESTAMP type
 
@@ -233,7 +264,7 @@ class TIMESTAMP(sqltypes.TIMESTAMP):
         self.precision = precision
 
 
-class _TDInterval(types.UserDefinedType):
+class _TDInterval(_TDType, types.UserDefinedType):
 
     """ Base class for the Teradata INTERVAL sqltypes """
 
@@ -672,7 +703,7 @@ class INTERVAL_SECOND(_TDInterval):
         return process
 
 
-class _TDPeriod(types.UserDefinedType):
+class _TDPeriod(_TDType, types.UserDefinedType):
 
     """ Base class for the Teradata Period sqltypes """
 
@@ -769,7 +800,7 @@ class PERIOD_TIMESTAMP(_TDPeriod):
         self.timezone       = timezone
 
 
-class CHAR(sqltypes.CHAR):
+class CHAR(_TDType, sqltypes.CHAR):
 
     """ Teradata CHAR type
 
@@ -802,7 +833,7 @@ class CHAR(sqltypes.CHAR):
         self.charset = charset
 
 
-class VARCHAR(sqltypes.String):
+class VARCHAR(_TDType, sqltypes.VARCHAR):
 
     """ Teradata VARCHAR type
 
@@ -829,7 +860,7 @@ class VARCHAR(sqltypes.String):
         self.charset = charset
 
 
-class CLOB(sqltypes.CLOB):
+class CLOB(_TDType, sqltypes.CLOB):
 
     """ Teradata CLOB type
 

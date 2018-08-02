@@ -5,8 +5,8 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from .base  import (INTEGER, SMALLINT, BIGINT, DECIMAL, FLOAT, DATE)
-from .types import (TIME, TIMESTAMP, CHAR, VARCHAR, CLOB, NUMBER, BYTEINT,
+from .base  import (INTEGER, SMALLINT, BIGINT, DECIMAL, DATE)
+from .types import (TIME, TIMESTAMP, CHAR, VARCHAR, CLOB, FLOAT, NUMBER, BYTEINT,
                     BYTE, VARBYTE, BLOB, INTERVAL_YEAR, INTERVAL_YEAR_TO_MONTH,
                     INTERVAL_MONTH, INTERVAL_DAY, INTERVAL_DAY_TO_HOUR,
                     INTERVAL_DAY_TO_MINUTE, INTERVAL_DAY_TO_SECOND, INTERVAL_HOUR,
