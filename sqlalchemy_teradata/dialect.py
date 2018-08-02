@@ -181,7 +181,9 @@ class TeradataDialect(default.DefaultDialect):
         typ = self._resolve_type(row['ColumnType'],
             length=int(row['ColumnLength'] or 0),
             chartype=chartype[row['CharType']
-                if row['ColumnType'].lower() in stringtypes else 0],
+                if row['ColumnType'] is not None and
+                   row['ColumnType'].lower() in stringtypes
+                else 0],
             prec=int(row['DecimalTotalDigits'] or 0),
             scale=int(row['DecimalFractionalDigits'] or 0),
             fmt=row['ColumnFormat'])
