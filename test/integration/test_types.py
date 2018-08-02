@@ -513,7 +513,7 @@ class TestTypesDetailed(testing.fixtures.TestBase):
         col_types = {
             'column_0': sqlalch_td.BYTE(length=10),
             'column_1': sqlalch_td.VARBYTE(length=100),
-            'column_2': sqlalch_td.BLOB(length=1000)
+            'column_2': sqlalch_td.BLOB(length=1, multiplier='K')
         }
 
         # Create the test table with the above Binary types
@@ -523,11 +523,17 @@ class TestTypesDetailed(testing.fixtures.TestBase):
 
         # test that each reflected column type has all the attribute values it
         # was instantiated with
-        reflected_cols = self.inspect.get_columns('table_test_types_binary')
-        for col in reflected_cols:
-            assert(type(col['type']) == type(col_types[col['name']]))
-            assert(str(col['type'].__dict__) ==
-                str(col_types[col['name']].__dict__))
+        cols = self.inspect.get_columns('table_test_types_binary')
+
+        assert(type(cols[0]['type']) == type(col_types[cols[0]['name']]))
+        assert(str(cols[0]['type'].__dict__) ==
+            str(sqlalch_td.BYTE(length=10).__dict__))
+        assert(type(cols[1]['type']) == type(col_types[cols[1]['name']]))
+        assert(str(cols[1]['type'].__dict__) ==
+            str(sqlalch_td.VARBYTE(length=100).__dict__))
+        assert(type(cols[2]['type']) == type(col_types[cols[2]['name']]))
+        assert(str(cols[2]['type'].__dict__) ==
+            str(sqlalch_td.BLOB(length=1024).__dict__))
 
         text = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed '   \
                'do eiusmod tempor incididunt ut labore et dolore magna aliqua. ' \
@@ -539,11 +545,12 @@ class TestTypesDetailed(testing.fixtures.TestBase):
                'mollit anim id est laborum.'
 
         text = str.encode(text)
+        with pytest.warns(UserWarning):
         # Insert the text above, encoded as a bytearray, into each column
-        self.conn.execute(table.insert(),
-            {'column_0': text,
-             'column_1': text,
-             'column_2': text})
+            self.conn.execute(table.insert(),
+                {'column_0': text,
+                 'column_1': text,
+                 'column_2': text})
 
         res = self.engine.execute(table.select())
 
