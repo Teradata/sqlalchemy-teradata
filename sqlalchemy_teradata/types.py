@@ -88,7 +88,7 @@ class VARBYTE(_TDType, sqltypes.VARBINARY):
         super(VARBYTE, self).__init__(length=length, **kwargs)
 
 
-class BLOB(_TDType, sqltypes.LargeBinary):
+class BLOB(_TDType, sqltypes.BLOB):
 
     """ Teradata BLOB type
 
@@ -125,6 +125,21 @@ class BLOB(_TDType, sqltypes.LargeBinary):
         """
         super(BLOB, self).__init__(length=length, **kwargs)
         self.multiplier = multiplier
+
+
+class FLOAT(_TDType, sqltypes.FLOAT):
+
+    """ Teradata FLOAT type
+
+    This type represent values in sign/magnitude form ranging from
+    2.226 x 10^-308 to 1.797 x 10^308.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a FLOAT object """
+        super(FLOAT, self).__init__(**kwargs)
 
 
 class NUMBER(_TDType, sqltypes.NUMERIC):
@@ -772,7 +787,7 @@ class CHAR(_TDType, sqltypes.CHAR):
         self.charset = charset
 
 
-class VARCHAR(_TDType, sqltypes.String):
+class VARCHAR(_TDType, sqltypes.VARCHAR):
 
     """ Teradata VARCHAR type
 
