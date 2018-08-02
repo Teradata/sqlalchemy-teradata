@@ -31,8 +31,28 @@ class BYTEINT(sqltypes.Integer):
 
 class _TDBinary(sqltypes._Binary):
 
+    """ Teradata Binary Types
+
+    This type represents a Teradata binary string. Warns users when
+    data may get truncated upon insertion.
+
+    """
+
     class TruncationWarning(UserWarning):
         pass
+
+    def _length(self):
+        """Compute the length allocated to this binary column."""
+
+        multiplier_map = {
+            'K': 1024,
+            'M': 1048576,
+            'G': 1073741824
+        }
+        if hasattr(self, 'multiplier') and self.multiplier in multiplier_map:
+            return self.length * multiplier_map[self.multiplier]
+
+        return self.length
 
     def bind_processor(self, dialect):
         if dialect.dbapi is None:
@@ -43,8 +63,7 @@ class _TDBinary(sqltypes._Binary):
         def process(value):
             if value is not None:
                 value = DBAPIBinary(value)
-                # TODO reflect to get updated self.length?
-                if len(value) > self.length:
+                if len(value) > self._length():
                     warnings.warn(
                         'Attempting to insert an item that is larger than the space '
                             'allocated for this column. Data may get truncated.',
