@@ -23,7 +23,6 @@ import sqlalchemy_teradata.types as tdtypes
 
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
-    None: sqltypes.NullType,
 
     # SQL standard types (unmodified)
     'i' : sqltypes.INTEGER,
@@ -162,7 +161,7 @@ class TeradataDialect(default.DefaultDialect):
             type_ = ischema_names[tc]
             return TeradataTypeResolver().process(type_, typecode=tc, **kw)
 
-        return ischema_names[None]
+        return sqltypes.NullType
 
     def _get_column_info(self, row):
         """
