@@ -189,6 +189,7 @@ class TeradataDialect(default.DefaultDialect):
 
         autoinc = row['IdColType'] in ('GA', 'GD')
 
+        # attrs contains all the attributes queried from DBC.Columns(q)V
         attrs    = {self.normalize_name(k): row[k] for k in row.keys()}
         col_info = {
             'name': self.normalize_name(row['ColumnName']),
@@ -228,9 +229,8 @@ class TeradataDialect(default.DefaultDialect):
 
         # If this is a view in pre-16 version, get types for individual columns
         if helpView:
-            res = [self._get_column_help(
-                        connection, schema, table_name, r['ColumnName'])
-                   for r in res]
+            res = [dict(r, **(self._get_column_help(
+                connection, schema, table_name, r['ColumnName']))) for r in res]
 
         return [self._get_column_info(row) for row in res]
 
