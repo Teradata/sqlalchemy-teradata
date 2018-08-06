@@ -23,7 +23,6 @@ import sqlalchemy_teradata.types as tdtypes
 
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
-    None: sqltypes.NullType,
 
     # SQL standard types (unmodified)
     'i' : sqltypes.INTEGER,
@@ -162,7 +161,7 @@ class TeradataDialect(default.DefaultDialect):
             type_ = ischema_names[tc]
             return TeradataTypeResolver().process(type_, typecode=tc, **kw)
 
-        return ischema_names[None]
+        return sqltypes.NullType
 
     def _get_column_info(self, row):
         """
@@ -178,63 +177,60 @@ class TeradataDialect(default.DefaultDialect):
 
         # Handle unspecified characterset and disregard chartypes specified for
         # non-character types (e.g. binary, json)
-        typ = self._resolve_type(row['columntype'],
-            length=int(row['columnlength'] or 0),
-            chartype=chartype[row['chartype']
-                if row['columntype'].lower() in stringtypes \
+        typ = self._resolve_type(row['ColumnType'],
+            length=int(row['ColumnLength'] or 0),
+            chartype=chartype[row['CharType']
+                if row['ColumnType'] is not None and
+                   row['ColumnType'].lower() in stringtypes
                 else 0],
-            prec=int(row['decimaltotaldigits'] or 0),
-            scale=int(row['decimalfractionaldigits'] or 0),
-            fmt=row['columnformat'])
+            prec=int(row['DecimalTotalDigits'] or 0),
+            scale=int(row['DecimalFractionalDigits'] or 0),
+            fmt=row['ColumnFormat'])
 
-        autoinc = row['idcoltype'] in ('GA', 'GD')
+        autoinc = row['IdColType'] in ('GA', 'GD')
 
-        return {
-            'name': self.normalize_name(row['columnname']),
+        # attrs contains all the attributes queried from DBC.Columns(q)V
+        attrs    = {self.normalize_name(k): row[k] for k in row.keys()}
+        col_info = {
+            'name': self.normalize_name(row['ColumnName']),
             'type': typ,
-            'nullable': row['nullable'] == u'Y',
-            'default': row['defaultvalue'],
-            'attrs': {'columnformat':row['columnformat']},
+            'nullable': row['Nullable'] == u'Y',
+            'default': row['DefaultValue'],
             'autoincrement': autoinc
         }
 
+        return dict(attrs, **col_info)
 
     def get_columns(self, connection, table_name, schema=None, **kw):
-
-        helpView=False
+        helpView = False
 
         if schema is None:
             schema = self.default_schema_name
 
-        if int(self.server_version_info.split('.')[0])<16:
-            dbc_columninfo='dbc.ColumnsV'
+        if int(self.server_version_info.split('.')[0]) < 16:
+            dbc_columninfo = 'dbc.ColumnsV'
 
-            #Check if the object us a view
-            stmt = select([column('tablekind')],\
-                            from_obj=[text('dbc.tablesV')]).where(\
-                            and_(text('DatabaseName=:schema'),\
-                                 text('TableName=:table_name'),\
-                                 text("tablekind='V'")))
+            # Check if the object is a view
+            stmt = select([column('tablekind')], from_obj=text('dbc.tablesV')).where(
+                        and_(text('DatabaseName=:schema'),
+                             text('TableName=:table_name'),
+                             text("tablekind='V'")))
             res = connection.execute(stmt, schema=schema, table_name=table_name).rowcount
-            helpView = (res==1)
+            helpView = (res == 1)
 
         else:
-            dbc_columninfo='dbc.ColumnsQV'
+            dbc_columninfo = 'dbc.ColumnsQV'
 
-        stmt = select([column('columnname'), column('columntype'),\
-                        column('columnlength'), column('chartype'),\
-                        column('decimaltotaldigits'), column('decimalfractionaldigits'),\
-                        column('columnformat'),\
-                        column('nullable'), column('defaultvalue'), column('idcoltype')],\
-                        from_obj=[text(dbc_columninfo)]).where(\
-                        and_(text('DatabaseName=:schema'),\
-                             text('TableName=:table_name')))
+        stmt = select(['*'], from_obj=text(dbc_columninfo)).where(
+            and_(text('DatabaseName=:schema'),
+                 text('TableName=:table_name')))
 
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchall()
 
-        #If this is a view in pre-16 version, get types for individual columns
+        # If this is a view in pre-16 version, get types for individual columns
         if helpView:
-            res=[self._get_column_help(connection, schema,table_name,r['columnname']) for r in res]
+            res = [dict(r, **(self._get_column_help(
+                connection, schema, table_name, r['ColumnName']))) for r in res]
 
         return [self._get_column_info(row) for row in res]
 
@@ -243,20 +239,21 @@ class TeradataDialect(default.DefaultDialect):
             connection.execute('select database').scalar())
 
     def _get_column_help(self, connection, schema,table_name,column_name):
-        stmt='help column '+schema+'.'+table_name+'.'+column_name
-        res = connection.execute(stmt).fetchall()[0]
+        stmt = 'help column ' + schema + '.' + table_name + '.' + column_name
+        res  = connection.execute(stmt).fetchall()[0]
 
-        return {'columnname':res['Column Name'],
-                'columntype':res['Type'],
-                'columnlength':res['Max Length'],
-                'chartype':res['Char Type'],
-                'decimaltotaldigits':res['Decimal Total Digits'],
-                'decimalfractionaldigits':res['Decimal Fractional Digits'],
-                'columnformat':res['Format'],
-                'nullable':res['Nullable'],
-                'defaultvalue':None,
-                'idcoltype':res['IdCol Type']
-                }
+        return {
+            'ColumnName': res['Column Name'],
+            'ColumnType': res['Type'],
+            'ColumnLength': res['Max Length'],
+            'CharType': res['Char Type'],
+            'DecimalTotalDigits': res['Decimal Total Digits'],
+            'DecimalFractionalDigits': res['Decimal Fractional Digits'],
+            'ColumnFormat': res['Format'],
+            'Nullable': res['Nullable'],
+            'DefaultValue': None,
+            'IdColType': res['IdCol Type']
+        }
 
     def get_table_names(self, connection, schema=None, **kw):
 
