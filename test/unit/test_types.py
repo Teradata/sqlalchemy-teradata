@@ -183,6 +183,19 @@ class TestCompileTDTypes(fixtures.TestBase):
         assert(self._compile(PERIOD_TIME())               == 'PERIOD(TIME)')
         assert(self._compile(PERIOD_TIMESTAMP())          == 'PERIOD(TIMESTAMP)')
 
+    def test_compile_binary(self):
+        """
+        Test compiling Teradata binary types with various attribute.
+        """
+
+        assert(self._compile(BYTE(length=1))                 == 'BYTE(1)')
+        assert(self._compile(VARBYTE(length=2))              == 'VARBYTE(2)')
+        assert(self._compile(BLOB(length=3))                 == 'BLOB(3)')
+        assert(self._compile(BLOB(length=4, multiplier='K')) == 'BLOB(4K)')
+        assert(self._compile(BLOB(length=4, multiplier='M')) == 'BLOB(4M)')
+        assert(self._compile(BLOB(length=4, multiplier='G')) == 'BLOB(4G)')
+        assert(self._compile(BLOB(length=4, multiplier='X')) == 'BLOB(4X)')
+
     def test_compile_character(self):
         """
         Test compiling Teradata Character types (CHAR, VARCHAR, CLOB) with

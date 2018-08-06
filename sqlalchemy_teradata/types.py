@@ -9,6 +9,7 @@ from sqlalchemy import types
 from sqlalchemy.sql import sqltypes
 
 import datetime
+import warnings
 import teradata.datatypes as td_dtypes
 
 
@@ -44,7 +45,52 @@ class BYTEINT(_TDType, sqltypes.Integer):
         super(BYTEINT, self).__init__(**kwargs)
 
 
-class BYTE(_TDType, sqltypes.BINARY):
+class _TDBinary(_TDType, sqltypes._Binary):
+
+    """ Teradata Binary Types
+
+    This type represents a Teradata binary string. Warns users when
+    data may get truncated upon insertion.
+
+    """
+
+    class TruncationWarning(UserWarning):
+        pass
+
+    def _length(self):
+        """Compute the length allocated to this binary column."""
+
+        multiplier_map = {
+            'K': 1024,
+            'M': 1048576,
+            'G': 1073741824
+        }
+        if hasattr(self, 'multiplier') and self.multiplier in multiplier_map:
+            return self.length * multiplier_map[self.multiplier]
+
+        return self.length
+
+    def bind_processor(self, dialect):
+        if dialect.dbapi is None:
+            return None
+
+        DBAPIBinary = dialect.dbapi.Binary
+
+        def process(value):
+            if value is not None:
+                value = DBAPIBinary(value)
+                if len(value) > self._length():
+                    warnings.warn(
+                        'Attempting to insert an item that is larger than the space '
+                            'allocated for this column. Data may get truncated.',
+                        self.TruncationWarning)
+                return value
+            else:
+                return None
+        return process
+
+
+class BYTE(_TDBinary, sqltypes.BINARY):
 
     """ Teradata BYTE type
 
@@ -66,7 +112,7 @@ class BYTE(_TDType, sqltypes.BINARY):
         super(BYTE, self).__init__(length=length, **kwargs)
 
 
-class VARBYTE(_TDType, sqltypes.VARBINARY):
+class VARBYTE(_TDBinary, sqltypes.VARBINARY):
 
     """ Teradata VARBYTE type
 
@@ -88,7 +134,7 @@ class VARBYTE(_TDType, sqltypes.VARBINARY):
         super(VARBYTE, self).__init__(length=length, **kwargs)
 
 
-class BLOB(_TDType, sqltypes.LargeBinary):
+class BLOB(_TDBinary, sqltypes.BLOB):
 
     """ Teradata BLOB type
 
@@ -125,6 +171,21 @@ class BLOB(_TDType, sqltypes.LargeBinary):
         """
         super(BLOB, self).__init__(length=length, **kwargs)
         self.multiplier = multiplier
+
+
+class FLOAT(_TDType, sqltypes.FLOAT):
+
+    """ Teradata FLOAT type
+
+    This type represent values in sign/magnitude form ranging from
+    2.226 x 10^-308 to 1.797 x 10^308.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a FLOAT object """
+        super(FLOAT, self).__init__(**kwargs)
 
 
 class NUMBER(_TDType, sqltypes.NUMERIC):
@@ -772,7 +833,7 @@ class CHAR(_TDType, sqltypes.CHAR):
         self.charset = charset
 
 
-class VARCHAR(_TDType, sqltypes.String):
+class VARCHAR(_TDType, sqltypes.VARCHAR):
 
     """ Teradata VARCHAR type
 
