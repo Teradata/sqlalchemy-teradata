@@ -10,7 +10,7 @@ import itertools
 import sqlalchemy_teradata as sqlalch_td
 
 """
-Integration testing for SQLAlchemy Operators.
+Integration testing for SQLAlchemy Operators and Type Affinities.
 """
 
 class TestOperators(testing.fixtures.TestBase):
@@ -339,19 +339,8 @@ class TestAffinity(testing.fixtures.TestBase):
                 for op in ops:
                     triples.append(op(left_operand, right_operand))
         return triples
-        
-    def test_interclass_arithmetic_affinity(self):
-        ops = (operators.add, operators.sub, operators.mul, operators.div,
-               operators.truediv, operators.mod)
 
-        # Enumerate all possible interclass operand-operator triples
-        numeric   = self._generate_op_triples(self.table_numeric.c, ops)
-        character = self._generate_op_triples(self.table_character.c, ops)
-        datetime  = self._generate_op_triples(self.table_datetime.c, ops)
-        binary    = self._generate_op_triples(self.table_binary.c, ops)
-        triples = numeric + character + datetime + binary
-        triples = character
-
+    def _test_arithmetic_affinity(self, triples):
         # Filter for operand-operator triples that correspond to valid
         # operations on the database
         valid_triples = []
@@ -375,7 +364,41 @@ class TestAffinity(testing.fixtures.TestBase):
         # Reflect the view to check the type of each column
         view = Table('view_test', self.metadata, autoload=True)
 
+        # TODO for printing out types
+        # for i, triple in enumerate(triples):
+        #     print(triple.left.type, triple.right.type,
+        #           triple.operator.__name__, triple.type,
+        #           view.columns['c' + str(i)].type)
+
         # Check that the type of the BinaryExpression is equal to the type
         # of the corresponding column in the view
         for i, triple in enumerate(triples):
             assert(type(triple.type) == type(view.columns['c' + str(i)].type))
+
+    def test_interclass_arithmetic_affinity(self):
+        ops = (operators.add, operators.sub, operators.mul, operators.div,
+               operators.truediv, operators.mod)
+
+        # Enumerate all possible interclass operand-operator triples
+        numeric   = self._generate_op_triples(self.table_numeric.c, ops)
+        character = self._generate_op_triples(self.table_character.c, ops)
+        datetime  = self._generate_op_triples(self.table_datetime.c, ops)
+        binary    = self._generate_op_triples(self.table_binary.c, ops)
+        triples = numeric + character + datetime + binary
+
+        self._test_arithmetic_affinity(triples)
+
+    def test_crossclass_arithmetic_affinity(self):
+        ops = (operators.add, operators.sub, operators.mul, operators.div,
+               operators.truediv, operators.mod)
+
+        triples = []
+        # Enumerate all possible crossclass operand-operator triples
+        for class_pair in itertools.permutations(
+            (self.table_numeric.c, self.table_character.c,
+             self.table_datetime.c, self.table_binary.c), r=2):
+            for type_pair in itertools.product(class_pair[0], class_pair[1]):
+                for op in ops:
+                    triples.append(op(type_pair[0], type_pair[1]))
+
+        self._test_arithmetic_affinity(triples)
