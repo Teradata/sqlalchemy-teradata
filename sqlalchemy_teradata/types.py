@@ -5,7 +5,7 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import types
+from sqlalchemy import types, util
 from sqlalchemy.sql import sqltypes, operators
 
 import datetime
@@ -21,6 +21,24 @@ class _TDType:
     behavior such that the type will get printed without being compiled by the
     GenericTypeCompiler (which would otherwise result in an exception).
     """
+
+    @property
+    def _type_affinity(self):
+        """Return a rudimental 'affinity' value expressing the general class
+        of type."""
+
+        # typ = None
+        # for t in self.__class__.__mro__:
+        #     if t in (sqltypes.TypeEngine, types.UserDefinedType):
+        #         print('typ:',typ)
+        #         return typ
+        #     elif issubclass(t, (sqltypes.TypeEngine, types.UserDefinedType)):
+        #         typ = t
+        # else:
+        #     print('class:', self.__class__)
+        # TODO ?????
+        print(self, self.__class__.mro())
+        return self.__class__
 
     def _parse_name(self, name):
         return name.replace('_', ' ')
@@ -45,7 +63,7 @@ class BYTEINT(_TDType, sqltypes.Integer):
         super(BYTEINT, self).__init__(**kwargs)
 
 
-class _TDBinary(_TDType, sqltypes._Binary):
+class _TDBinary(sqltypes._LookupExpressionAdapter, _TDType, sqltypes._Binary):
 
     """ Teradata Binary Types
 
@@ -54,10 +72,26 @@ class _TDBinary(_TDType, sqltypes._Binary):
 
     """
 
-    class comparator_factory(sqltypes._Binary.Comparator):
+    class Comparator(sqltypes._Binary.Comparator):
+        """Define comparison operations for Teradata Binary types."""
+        _blank_dict = util.immutabledict()
+
+        def _adapt_expression(self, op, other_comparator):
+            othertype = other_comparator.type._type_affinity
+            lookup = self.type._expression_adaptations.get(
+                op, self._blank_dict).get(
+                othertype, self.type)
+            if lookup is othertype:
+                return (op, other_comparator.type)
+            elif lookup is self.type._type_affinity:
+                return (op, self.type)
+            else:
+                return (op, lookup)
 
         def __add__(self, other):
             return operators.concat_op(self, other)
+
+    comparator_factory = Comparator
 
     class TruncationWarning(UserWarning):
         pass
@@ -87,8 +121,8 @@ class _TDBinary(_TDType, sqltypes._Binary):
                 value = DBAPIBinary(value)
                 if len(value) > bin_length:
                     warnings.warn(
-                        'Attempting to insert an item that is larger than the space '
-                            'allocated for this column. Data may get truncated.',
+                        'Attempting to insert an item that is larger than the '
+                        'space allocated for this column. Data may get truncated.',
                         self.TruncationWarning)
                 return value
             else:
@@ -117,6 +151,16 @@ class BYTE(_TDBinary, sqltypes.BINARY):
         """
         super(BYTE, self).__init__(length=length, **kwargs)
 
+    @property
+    def _expression_adaptations(self):
+        return {
+            operators.concat_op: {
+                BYTE:    self.__class__,
+                VARBYTE: VARBYTE,
+                BLOB:    BLOB
+            }
+        }
+
 
 class VARBYTE(_TDBinary, sqltypes.VARBINARY):
 
@@ -138,6 +182,16 @@ class VARBYTE(_TDBinary, sqltypes.VARBINARY):
 
         """
         super(VARBYTE, self).__init__(length=length, **kwargs)
+
+    @property
+    def _expression_adaptations(self):
+        return {
+            operators.concat_op: {
+                BYTE:    self.__class__,
+                VARBYTE: self.__class__,
+                BLOB:    BLOB
+            }
+        }
 
 
 class BLOB(_TDBinary, sqltypes.BLOB):
@@ -177,6 +231,16 @@ class BLOB(_TDBinary, sqltypes.BLOB):
         """
         super(BLOB, self).__init__(length=length, **kwargs)
         self.multiplier = multiplier
+
+    @property
+    def _expression_adaptations(self):
+        return {
+            operators.concat_op: {
+                BYTE:    self.__class__,
+                VARBYTE: self.__class__,
+                BLOB:    self.__class__
+            }
+        }
 
 
 class FLOAT(_TDType, sqltypes.FLOAT):
