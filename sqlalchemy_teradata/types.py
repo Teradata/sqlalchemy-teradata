@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import types
-from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql import sqltypes, operators
 
 import datetime
 import warnings
@@ -54,6 +54,11 @@ class _TDBinary(_TDType, sqltypes._Binary):
 
     """
 
+    class comparator_factory(sqltypes._Binary.Comparator):
+
+        def __add__(self, other):
+            return operators.concat_op(self, other)
+
     class TruncationWarning(UserWarning):
         pass
 
@@ -77,9 +82,10 @@ class _TDBinary(_TDType, sqltypes._Binary):
         DBAPIBinary = dialect.dbapi.Binary
 
         def process(value):
-            if value is not None:
+            bin_length = self._length()
+            if value is not None and bin_length is not None:
                 value = DBAPIBinary(value)
-                if len(value) > self._length():
+                if len(value) > bin_length:
                     warnings.warn(
                         'Attempting to insert an item that is larger than the space '
                             'allocated for this column. Data may get truncated.',
