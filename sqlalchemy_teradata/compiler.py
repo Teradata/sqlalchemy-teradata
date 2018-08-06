@@ -634,10 +634,10 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
             '(' + str(type_.length) + ')' if type_.length is not None else '')
 
     def visit_BLOB(self, type_, **kw):
-        unit = self._get('unit', type_, kw)
+        multiplier = self._get('multiplier', type_, kw)
         return 'BLOB{}'.format(
             '(' + str(type_.length) + \
-                '{})'.format(unit if unit is not None else '')
+                '{})'.format(multiplier if multiplier is not None else '')
             if type_.length is not None else '')
 
     def visit_NUMBER(self, type_, **kw):
