@@ -3,6 +3,7 @@ from sqlalchemy import testing
 from sqlalchemy import sql
 from sqlalchemy.sql import operators
 from sqlalchemy.testing.plugin.pytestplugin import *
+from sqlalchemy_teradata.dialect import TeradataDialect
 
 import datetime
 import itertools
@@ -50,8 +51,6 @@ class TestOperators(testing.fixtures.TestBase):
         self.conn     = testing.db.connect()
         self.engine   = self.conn.engine
         self.metadata = MetaData(bind=self.engine)
-
-        self.table = TestOperators.table
 
     def tearDown(self):
         self.conn.invalidate()
@@ -271,7 +270,7 @@ class TestAffinity(testing.fixtures.TestBase):
 
     def setup_class(cls):
         """
-        Creates a test table to be used for testing type-operator affinities.
+        Create test tables to be used for testing type-operator affinities.
         """
         cls.conn     = testing.db.connect()
         cls.engine   = cls.conn.engine
@@ -282,7 +281,7 @@ class TestAffinity(testing.fixtures.TestBase):
             Column('c1', sqlalch_td.SMALLINT()),
             Column('c2', sqlalch_td.BIGINT()),
             Column('c3', sqlalch_td.DECIMAL()),
-            Column('c3', sqlalch_td.FLOAT()),
+            Column('c4', sqlalch_td.FLOAT()),
             Column('c5', sqlalch_td.NUMBER()),
             Column('c6', sqlalch_td.BYTEINT()))
         cls.table_character = Table('t_test_character', cls.metadata,
@@ -328,15 +327,55 @@ class TestAffinity(testing.fixtures.TestBase):
         self.table_binary    = TestAffinity.table_binary
 
     def tearDown(self):
+        self.conn.execute('DROP VIEW view_test')
         self.conn.invalidate()
         self.conn.close()
 
-    def test_arithmetic_affinity_on_numeric(self):
+    @staticmethod
+    def _generate_op_triples(cols, ops):
+        triples = []
+        for left_operand in cols:
+            for right_operand in cols:
+                for op in ops:
+                    triples.append(op(left_operand, right_operand))
+        return triples
+        
+    def test_interclass_arithmetic_affinity(self):
         ops = (operators.add, operators.sub, operators.mul, operators.div,
-               operators.mod)
+               operators.truediv, operators.mod)
 
-        res = self.engine.execute(
-            sql.select([op(cols[0], cols[1]) for cols, op in
-                itertools.product(
-                    itertools.combinations(
-                        self.table_numeric.c, r=2), ops)]))
+        # Enumerate all possible interclass operand-operator triples
+        numeric   = self._generate_op_triples(self.table_numeric.c, ops)
+        character = self._generate_op_triples(self.table_character.c, ops)
+        datetime  = self._generate_op_triples(self.table_datetime.c, ops)
+        binary    = self._generate_op_triples(self.table_binary.c, ops)
+        triples = numeric + character + datetime + binary
+        triples = character
+
+        # Filter for operand-operator triples that correspond to valid
+        # operations on the database
+        valid_triples = []
+        for triple in triples:
+            try:
+                res = self.engine.execute(sql.select([triple]))
+                res.close()
+                valid_triples.append(triple)
+            except Exception:
+                pass
+        triples = valid_triples
+
+        # Generate view with the valid operand-operator triples
+        c_ops = ', '.join([str(triple.compile(dialect=TeradataDialect())) +
+                    ' as ' + 'c' + str(i)
+                for i, triple in enumerate(triples)])
+        create_view_stmt = \
+            'CREATE VIEW view_test as (\nSELECT ' + c_ops + '\n)'
+        self.engine.execute(text(create_view_stmt))
+
+        # Reflect the view to check the type of each column
+        view = Table('view_test', self.metadata, autoload=True)
+
+        # Check that the type of the BinaryExpression is equal to the type
+        # of the corresponding column in the view
+        for i, triple in enumerate(triples):
+            assert(type(triple.type) == type(view.columns['c' + str(i)].type))

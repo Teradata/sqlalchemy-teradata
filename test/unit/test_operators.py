@@ -4,7 +4,10 @@ from sqlalchemy import sql
 from sqlalchemy.sql import operators
 from sqlalchemy.testing import fixtures
 from sqlalchemy.testing.plugin.pytestplugin import *
-from sqlalchemy_teradata import INTEGER
+from sqlalchemy_teradata.dialect import TeradataDialect
+
+import itertools
+import sqlalchemy_teradata as sqlalch_td
 
 """
 Unit testing for SQLAlchemy Operators.
@@ -18,7 +21,7 @@ class TestCompileOperators(fixtures.TestBase):
         self.td_engine = create_engine('teradata://', strategy='mock', executor=dump)
         self.metadata  = MetaData(bind=self.td_engine)
 
-        self.table = Table('t_test', self.metadata, Column('c1', INTEGER))
+        self.table = Table('t_test', self.metadata, Column('c1', sqlalch_td.INTEGER))
 
     def test_compile_binary_operators(self):
         """
@@ -128,3 +131,90 @@ class TestCompileOperators(fixtures.TestBase):
                 operators.mod(self.table.c.c1, 0)))
 
         assert(self.last_compiled == 't_test.c1 <> ? AND t_test.c1 MOD ?')
+
+
+class TestCompileAffinity(fixtures.TestBase):
+
+    def setup_class(cls):
+        """
+        Creates test tables to be used for testing type-operator affinities.
+        """
+        cls.metadata = MetaData()
+
+        cls.table_numeric = Table('t_test_numeric', cls.metadata,
+            Column('c0', sqlalch_td.INTEGER()),
+            Column('c1', sqlalch_td.SMALLINT()),
+            Column('c2', sqlalch_td.BIGINT()),
+            Column('c3', sqlalch_td.DECIMAL()),
+            Column('c4', sqlalch_td.FLOAT()),
+            Column('c5', sqlalch_td.NUMBER()),
+            Column('c6', sqlalch_td.BYTEINT()))
+        cls.table_character = Table('t_test_character', cls.metadata,
+            Column('c0', sqlalch_td.CHAR()),
+            Column('c1', sqlalch_td.VARCHAR()),
+            Column('c2', sqlalch_td.CLOB()))
+        cls.table_datetime = Table('t_test_datetime', cls.metadata,
+            Column('c0', sqlalch_td.DATE()),
+            Column('c1', sqlalch_td.TIME()),
+            Column('c2', sqlalch_td.TIMESTAMP()))
+        cls.table_binary = Table('t_test_binary', cls.metadata,
+            Column('c0', sqlalch_td.BYTE()),
+            Column('c1', sqlalch_td.VARBYTE(10)),
+            Column('c2', sqlalch_td.BLOB()))
+
+        cls.arith_ops = (operators.add, operators.sub, operators.mul,
+                         operators.div, operators.truediv, operators.mod)
+
+    @staticmethod
+    def _generate_op_triples(cols, ops):
+        triples = []
+        for left_operand in cols:
+            for right_operand in cols:
+                for op in ops:
+                    triples.append(op(left_operand, right_operand))
+        return triples
+
+    def test_compile_arithmetic_numeric(self):
+        triples = self._generate_op_triples(self.table_numeric.c, self.arith_ops)
+
+        op_map = {
+            operators.add:     '+',
+            operators.sub:     '-',
+            operators.mul:     '*',
+            operators.truediv: '/',
+            operators.mod:     'MOD'
+        }
+
+        for triple in triples:
+            assert(op_map[triple.operator] in
+                str(triple.compile(dialect=TeradataDialect())))
+
+    def test_compile_arithmetic_date(self):
+        triples = self._generate_op_triples([self.table_datetime.c.c0],
+            [operators.add, operators.sub, operators.div,
+             operators.truediv, operators.mod])
+
+        op_map = {
+            operators.add:     '+',
+            operators.sub:     '-',
+            operators.truediv: '/',
+            operators.mod:     'MOD'
+        }
+
+        for triple in triples:
+            assert(op_map[triple.operator] in
+                str(triple.compile(dialect=TeradataDialect())))
+
+    def test_compile_concat_character(self):
+        triples = self._generate_op_triples(self.table_character.c,
+            [operators.add, operators.concat_op])
+
+        for triple in triples:
+            assert('||' in str(triple.compile(dialect=TeradataDialect())))
+
+    def test_compile_concat_binary(self):
+        triples = self._generate_op_triples(self.table_binary.c,
+            [operators.add, operators.concat_op])
+
+        for triple in triples:
+            assert('||' in str(triple.compile(dialect=TeradataDialect())))
