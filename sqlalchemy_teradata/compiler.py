@@ -38,26 +38,13 @@ class TeradataCompiler(compiler.SQLCompiler):
 
         return pre
 
-    def visit_binary(self, binary, override_operator=None,
-                     eager_grouping=False, **kw):
-        """
-        Handles the overriding of binary operators. Any custom binary operator
-        definition should be placed in the custom_ops dict.
-        """
-        custom_ops = {
-            operators.ne:  '<>',
-            operators.mod: 'MOD'
-        }
+    def visit_mod_binary(self, binary, operator, **kw):
+        return self.process(binary.left, **kw) + " MOD " + \
+            self.process(binary.right, **kw)
 
-        if binary.operator in custom_ops:
-            binary.operator = operators.custom_op(
-                opstring=custom_ops[binary.operator])
-
-        return super(TeradataCompiler, self).\
-                 visit_binary(binary,
-                              override_operator=override_operator,
-                              eager_grouping=eager_grouping,
-                              **kw)
+    def visit_ne_binary(self, binary, operator, **kw):
+        return self.process(binary.left, **kw) + " <> " + \
+            self.process(binary.right, **kw)
 
     def limit_clause(self, select, **kwargs):
         """Limit after SELECT is implemented in get_select_precolumns"""
@@ -634,10 +621,10 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
             '(' + str(type_.length) + ')' if type_.length is not None else '')
 
     def visit_BLOB(self, type_, **kw):
-        unit = self._get('unit', type_, kw)
+        multiplier = self._get('multiplier', type_, kw)
         return 'BLOB{}'.format(
             '(' + str(type_.length) + \
-                '{})'.format(unit if unit is not None else '')
+                '{})'.format(multiplier if multiplier is not None else '')
             if type_.length is not None else '')
 
     def visit_NUMBER(self, type_, **kw):
