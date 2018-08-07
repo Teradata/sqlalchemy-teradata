@@ -31,9 +31,9 @@ ReservedWords = set(["abort", "abortsession", "abs", "access_lock", "account",
                      "average", "avg", "before", "begin" , "between", "bigint",
                      "binary", "blob", "both", "bt", "but", "by", "byte", "byteint",
                      "bytes", "call", "case", "case_n", "casespecific", "cast", "cd",
-                     "char", "char_length", "char2hexint", "count","day", "desc", "hour",
-                     "in", "le", "minute", "meets", "month", "order", "ordering",
-                     "title", "value",
+                     "char", "char_length", "char2hexint", "count", "date", "day", "desc", "hour",
+                     "in", "le", "minute", "meets", "month", "none", "order", "ordering",
+                     "title", "value", "integer", "float", "smallint", "bigint", "decimal", "number",
                      'user','password', "preceded", "second", "succeeds", "year", "match", "time", "timestamp"])
 
 class TeradataExecutionContext(default.DefaultExecutionContext):
