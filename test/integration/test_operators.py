@@ -327,9 +327,15 @@ class TestAffinity(testing.fixtures.TestBase):
         self.table_binary    = TestAffinity.table_binary
 
     def tearDown(self):
-        self.conn.execute('DROP VIEW view_test')
+        self._drop_all_views()
+
         self.conn.invalidate()
         self.conn.close()
+
+    def _drop_all_views(self):
+        view_names = self.engine.dialect.get_view_names(self.conn)
+        for view_name in view_names:
+            self.conn.execute('DROP VIEW {}'.format(view_name))
 
     @staticmethod
     def _generate_op_triples(cols, ops):
@@ -417,14 +423,13 @@ class TestAffinity(testing.fixtures.TestBase):
 
     # def test_create_view(self):
     #     self.engine.execute(
-    #         'CREATE VIEW view_name as ('
+    #         'CREATE VIEW view_test as ('
     #         '    SELECT c0 + c1 as sum_c0_c1, c1 - c2 as diff_c1_c2 from t_test_numeric'
     #         ')'
     #     )
-    #     view = Table('view_name', self.metadata, autoload=True)
+    #     view = Table('view_test', self.metadata, autoload=True)
     #     print(view.c)
     #     print([type(c.type) for c in view.c])
-    #     self.engine.execute('DROP VIEW view_name')
 
     # for triple in triples:
     #     try:
