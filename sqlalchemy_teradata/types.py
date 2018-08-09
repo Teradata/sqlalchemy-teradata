@@ -263,6 +263,8 @@ class TIMESTAMP(_TDType, sqltypes.TIMESTAMP):
         super(TIMESTAMP, self).__init__(timezone=timezone, **kwargs)
         self.precision = precision
 
+    def get_dbapi_type(self, dbapi):
+      return dbapi.DATETIME
 
 class _TDInterval(_TDType, types.UserDefinedType):
 
