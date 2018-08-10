@@ -1,11 +1,11 @@
 from sqlalchemy import Table, Column, MetaData, text
 from sqlalchemy import testing
 from sqlalchemy import sql
-from sqlalchemy.sql import operators
+from sqlalchemy.sql import operators, sqltypes
 from sqlalchemy.testing.plugin.pytestplugin import *
 from sqlalchemy_teradata.dialect import TeradataDialect
 
-import datetime
+import datetime, decimal, enum
 import itertools
 import sqlalchemy_teradata as sqlalch_td
 
@@ -266,15 +266,24 @@ class TestOperators(testing.fixtures.TestBase):
         assert([row[0] for row in res][-1] == 'foobar')
 
 
-class TestAffinity(testing.fixtures.TestBase):
+class TestAdaptation(testing.fixtures.TestBase):
 
     def setup_class(cls):
         """
         Create test tables to be used for testing type-operator affinities.
         """
+        
         cls.conn     = testing.db.connect()
         cls.engine   = cls.conn.engine
         cls.metadata = MetaData(bind=cls.engine)
+
+        cls.arith_ops = (operators.add, operators.sub, operators.mul,
+                         operators.div, operators.truediv, operators.mod)
+
+        class TestEnum(enum.Enum):
+            one   = 1
+            two   = 2
+            three = 3
 
         cls.table_numeric = Table('t_test_numeric', cls.metadata,
             Column('c0', sqlalch_td.INTEGER()),
@@ -285,9 +294,9 @@ class TestAffinity(testing.fixtures.TestBase):
             Column('c5', sqlalch_td.NUMBER()),
             Column('c6', sqlalch_td.BYTEINT()))
         cls.table_character = Table('t_test_character', cls.metadata,
-            Column('c0', sqlalch_td.CHAR()),
-            Column('c1', sqlalch_td.VARCHAR()),
-            Column('c2', sqlalch_td.CLOB()))
+            Column('c0', sqlalch_td.CHAR(length=100)),
+            Column('c1', sqlalch_td.VARCHAR(length=100)),
+            Column('c2', sqlalch_td.CLOB(length=100)))
         cls.table_datetime = Table('t_test_datetime', cls.metadata,
             Column('c0', sqlalch_td.DATE()),
             Column('c1', sqlalch_td.TIME()),
@@ -296,6 +305,23 @@ class TestAffinity(testing.fixtures.TestBase):
             Column('c0', sqlalch_td.BYTE(length=100)),
             Column('c1', sqlalch_td.VARBYTE(length=100)),
             Column('c2', sqlalch_td.BLOB(length=100)))
+        cls.table_generic = Table('t_test_generic', cls.metadata,
+            Column('c0',  sqltypes.BigInteger()),
+            Column('c1',  sqltypes.Boolean()),
+            Column('c2',  sqltypes.Date()),
+            Column('c3',  sqltypes.DateTime()),
+            Column('c4',  sqltypes.Enum(TestEnum)),
+            Column('c5',  sqltypes.Float()),
+            Column('c6',  sqltypes.Integer()),
+            Column('c7',  sqltypes.Interval()),
+            Column('c8',  sqltypes.LargeBinary()),
+            Column('c9',  sqltypes.Numeric()),
+            Column('c10', sqltypes.SmallInteger()),
+            Column('c11', sqltypes.String()),
+            Column('c12', sqltypes.Text()),
+            Column('c13', sqltypes.Time()),
+            Column('c14', sqltypes.Unicode()),
+            Column('c15', sqltypes.UnicodeText()))
         cls.metadata.create_all()
 
         cls.engine.execute(cls.table_numeric.insert(),
@@ -305,12 +331,13 @@ class TestAffinity(testing.fixtures.TestBase):
             {'c0': 'fizzbuzz', 'c1': 'foobar',
              'c2': 'the quick brown fox jumps over the lazy dog'})
         cls.engine.execute(cls.table_datetime.insert(),
-            {'c0': datetime.date(year=1912, month=6, day=23),
+            {'c0': datetime.date(year=3, month=2, day=1),
              'c1': datetime.time(hour=15, minute=37, second=25),
              'c2': datetime.datetime(year=1912, month=6, day=23,
                                      hour=15, minute=37, second=25)})
         cls.engine.execute(cls.table_binary.insert(),
-            {'c0': 123, 'c1': 456, 'c2': 789})
+            {'c0': str.encode('a'), 'c1': str.encode('b'),
+             'c2': str.encode('c')})
 
     def teardown_class(cls):
         cls.metadata.drop_all(cls.engine)
@@ -321,24 +348,24 @@ class TestAffinity(testing.fixtures.TestBase):
         self.engine   = self.conn.engine
         self.metadata = MetaData(bind=self.engine)
 
-        self.table_numeric   = TestAffinity.table_numeric
-        self.table_character = TestAffinity.table_character
-        self.table_datetime  = TestAffinity.table_datetime
-        self.table_binary    = TestAffinity.table_binary
-
     def tearDown(self):
-        self._drop_all_views()
+        self._drop_view_test()
 
         self.conn.invalidate()
         self.conn.close()
 
-    def _drop_all_views(self):
+    def _drop_view_test(self):
+        """Drop view_test from the database."""
+
         view_names = self.engine.dialect.get_view_names(self.conn)
         for view_name in view_names:
-            self.conn.execute('DROP VIEW {}'.format(view_name))
+            if view_name == 'view_test':
+                self.conn.execute('DROP VIEW {}'.format(view_name))
 
     @staticmethod
-    def _generate_op_triples(cols, ops):
+    def _generate_intraclass_triples(cols, ops):
+        """Enumerates all possible intraclass operand-operator triples."""
+
         triples = []
         for left_operand in cols:
             for right_operand in cols:
@@ -346,7 +373,26 @@ class TestAffinity(testing.fixtures.TestBase):
                     triples.append(op(left_operand, right_operand))
         return triples
 
-    def _test_arithmetic_affinity(self, triples):
+    @staticmethod
+    def _generate_interclass_triples(classes_tuple, ops):
+        """Enumerates all possible interclass operand-operator triples."""
+
+        triples = []
+        for class_pair in itertools.permutations(classes_tuple, r=2):
+            for type_pair in itertools.product(class_pair[0], class_pair[1]):
+                for op in ops:
+                    triples.append(op(type_pair[0], type_pair[1]))
+        return triples
+
+    def _test_adaptation(self, triples):
+        """Check that each valid operand-operator triple adapts to the correct
+        type class.
+
+        For each operand-operator triple corresponding to a valid database
+        operation, check that the BinaryExpression `type` field is equivalent to
+        the type emitted by the Teradata backend.
+        """
+
         # Filter for operand-operator triples that correspond to valid
         # operations on the database
         valid_triples = []
@@ -355,12 +401,17 @@ class TestAffinity(testing.fixtures.TestBase):
                 res = self.engine.execute(sql.select([triple]))
                 res.close()
                 valid_triples.append(triple)
-            except Exception:
+            except Exception as exc:
+                # TODO handle overflow with DATE * DATE and op(character, numeric)
+                # if not 'operation' in str(exc):
+                #     print(exc)
                 pass
         triples = valid_triples
 
         # Generate view with the valid operand-operator triples
-        c_ops = ', '.join([str(triple.compile(dialect=TeradataDialect())) +
+        c_ops = ', '.join([str(triple.compile(
+                        dialect=TeradataDialect(),
+                        compile_kwargs={"literal_binds": True})) +
                     ' as ' + 'c' + str(i)
                 for i, triple in enumerate(triples)])
         create_view_stmt = \
@@ -370,78 +421,61 @@ class TestAffinity(testing.fixtures.TestBase):
         # Reflect the view to check the type of each column
         view = Table('view_test', self.metadata, autoload=True)
 
-        # TODO for printing out types
-        for i, triple in enumerate(triples):
-            print(triple.left.type, triple.right.type,
-                  triple.operator.__name__, triple.type,
-                  view.columns['c' + str(i)].type)
-
         # Check that the type of the BinaryExpression is equal to the type
         # of the corresponding column in the view
-        # for i, triple in enumerate(triples):
-        #     assert(type(triple.type) == type(view.columns['c' + str(i)].type))
+        for i, triple in enumerate(triples):
+            assert(type(triple.type) == type(view.columns['c' + str(i)].type))
 
-    def test_interclass_arithmetic_affinity(self):
-        ops = (operators.add, operators.sub, operators.mul, operators.div,
-               operators.truediv, operators.mod)
+    def test_intraclass_arithmetic_adaptation(self):
+        """Test arithmetic adaptations of types within the same type class."""
 
-        # Enumerate all possible interclass operand-operator triples
-        numeric   = self._generate_op_triples(self.table_numeric.c, ops)
-        character = self._generate_op_triples(self.table_character.c, ops)
-        datetime  = self._generate_op_triples(self.table_datetime.c, ops)
-        binary    = self._generate_op_triples(self.table_binary.c, ops)
+        ops = self.arith_ops
+
+        # Enumerate all possible intraclass operand-operator triples
+        numeric   = self._generate_intraclass_triples(self.table_numeric.c, ops)
+        character = self._generate_intraclass_triples(self.table_character.c, ops)
+        datetime  = self._generate_intraclass_triples(self.table_datetime.c, ops)
+        binary    = self._generate_intraclass_triples(self.table_binary.c, ops)
         triples = numeric + character + datetime + binary
-        triples = binary
 
-        self._test_arithmetic_affinity(triples)
+        self._test_adaptation(triples)
 
-    def test_crossclass_arithmetic_affinity(self):
-        ops = (operators.add, operators.sub, operators.mul, operators.div,
-               operators.truediv, operators.mod)
+    @pytest.mark.xfail
+    def test_interclass_arithmetic_adaptation(self):
+        """Test arithmetic adaptations of types across different type classes."""
 
-        triples = []
-        # Enumerate all possible crossclass operand-operator triples
-        for class_pair in itertools.permutations(
-            (self.table_numeric.c, self.table_character.c,
-             self.table_datetime.c, self.table_binary.c), r=2):
-            for type_pair in itertools.product(class_pair[0], class_pair[1]):
-                for op in ops:
-                    triples.append(op(type_pair[0], type_pair[1]))
+        ops           = self.arith_ops
+        classes_tuple = (self.table_numeric.c, self.table_character.c,
+                         self.table_datetime.c, self.table_binary.c)
 
-        self._test_arithmetic_affinity(triples)
+        triples = self._generate_interclass_triples(classes_tuple, ops)
 
+        self._test_adaptation(triples)
 
-    # def test_arithmetic_affinity_on_numeric(self):
-    #     ops = (operators.add, operators.sub, operators.mul, operators.div,
-    #            operators.truediv, operators.mod)
-    #
-    #     res = self.engine.execute(
-    #         sql.select([op(cols[0], cols[1]) for cols, op in
-    #             itertools.product(
-    #                 itertools.combinations(
-    #                     self.table_numeric.c, r=2), ops)]))
+    @pytest.mark.xfail
+    def test_generic_arithmetic_adaptation(self):
+        """Test arithmetic adaptations between generic and Teradata types."""
 
-    # def test_create_view(self):
-    #     self.engine.execute(
-    #         'CREATE VIEW view_test as ('
-    #         '    SELECT c0 + c1 as sum_c0_c1, c1 - c2 as diff_c1_c2 from t_test_numeric'
-    #         ')'
-    #     )
-    #     view = Table('view_test', self.metadata, autoload=True)
-    #     print(view.c)
-    #     print([type(c.type) for c in view.c])
+        ops           = self.arith_ops
+        generics      = (self.table_generic.c)
+        classes_tuple = ((*self.table_numeric.c, *self.table_character.c,
+                          *self.table_datetime.c, *self.table_binary.c),
+                         generics)
 
-    # for triple in triples:
-    #     try:
-    #         res = self.engine.execute(sql.select([triple]))
-    #         res.close()
-    #         # print('WORKS:',
-    #         #     (triple.left.type,
-    #         #      triple.operator.__name__,
-    #         #      triple.right.type),
-    #         #     triple.type)
-    #         print(triple.left.type, triple.right.type, triple.operator.__name__, triple.type)
-    #     except Exception as exc:
-    #         # print("DOESN'T WORK:", triple)
-    #         # print('\t' + str(exc))
-    #         pass
+        triples = self._generate_interclass_triples(classes_tuple, ops)
+
+        self._test_adaptation(triples)
+
+    @pytest.mark.xfail
+    def test_numeric_literal_arithmetic_adaptation(self):
+        """Test arithmetic adaptations between numeric literals and
+        Teradata types.
+        """
+
+        ops           = self.arith_ops
+        literals      = (10, 10.0, decimal.Decimal(10))
+        classes_tuple = (self.table_numeric.c, literals)
+
+        triples = self._generate_interclass_triples(classes_tuple, ops)
+
+        self._test_adaptation(triples)
