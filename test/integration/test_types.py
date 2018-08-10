@@ -386,10 +386,10 @@ class TestTypesGeneral(testing.fixtures.TestBase):
         col_to_type = {'column_' + str(i): type for
             i, type in enumerate(self.rawsql_types)}
         type_map    = {
-            'BIGINT':       sqltypes.BIGINT,
-            'SMALLINT':     sqltypes.SMALLINT,
-            'INTEGER':      sqltypes.INTEGER,
-            'DATE':         sqltypes.DATE,
+            'BIGINT':       sqlalch_td.BIGINT,
+            'SMALLINT':     sqlalch_td.SMALLINT,
+            'INTEGER':      sqlalch_td.INTEGER,
+            'DATE':         sqlalch_td.DATE,
             'FLOAT':        sqlalch_td.FLOAT,
             'BYTEINT':      sqlalch_td.BYTEINT,
             'DECIMAL':      sqlalch_td.DECIMAL,
@@ -817,7 +817,7 @@ class TestTypesDetailed(testing.fixtures.TestBase):
         """
 
         col_types = {
-            'column_0': sqltypes.INTEGER(),
+            'column_0': sqlalch_td.INTEGER(),
             'column_1': sqlalch_td.PERIOD_DATE(
                             format='yyyy-mm-dd'),
             'column_2': sqlalch_td.PERIOD_TIMESTAMP(
