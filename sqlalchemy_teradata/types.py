@@ -5,15 +5,43 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import types, util
+from sqlalchemy import types
 from sqlalchemy.sql import sqltypes, operators
+from sqlalchemy_teradata.adapter import TeradataExpressionAdapter
 
 import datetime
 import warnings
 import teradata.datatypes as td_dtypes
 
 
-class _TDType:
+class _TDComparable:
+
+    class Comparator(types.TypeEngine.Comparator):
+
+        def _adapt_expression(self, op, other_comparator):
+            lookup = TeradataExpressionAdapter().process(
+                self.type.__class__,
+                op=op, other=other_comparator.type.__class__)
+            return (op, lookup)
+
+    comparator_factory = Comparator
+
+
+class _TDConcatenable:
+
+    class Comparator(_TDComparable.Comparator):
+
+        def _adapt_expression(self, op, other_comparator):
+            return super(_TDConcatenable.Comparator, self)._adapt_expression(
+                operators.concat_op if op is operators.add and
+                    issubclass(other_comparator.type.__class__,
+                               self.type._type_affinity)
+                else op, other_comparator)
+
+    comparator_factory = Comparator
+
+
+class _TDType(_TDComparable):
 
     """ Teradata Data Type
 
@@ -22,29 +50,85 @@ class _TDType:
     GenericTypeCompiler (which would otherwise result in an exception).
     """
 
-    @property
-    def _type_affinity(self):
-        """Return a rudimental 'affinity' value expressing the general class
-        of type."""
-
-        # typ = None
-        # for t in self.__class__.__mro__:
-        #     if t in (sqltypes.TypeEngine, types.UserDefinedType):
-        #         print('typ:',typ)
-        #         return typ
-        #     elif issubclass(t, (sqltypes.TypeEngine, types.UserDefinedType)):
-        #         typ = t
-        # else:
-        #     print('class:', self.__class__)
-        # TODO ?????
-        print(self, self.__class__.mro())
-        return self.__class__
-
     def _parse_name(self, name):
         return name.replace('_', ' ')
 
     def __str__(self):
         return self._parse_name(self.__class__.__name__)
+
+
+class INTEGER(_TDType, sqltypes.INTEGER):
+
+    """ Teradata INTEGER type
+
+    Represents a signed, binary integer value from -2,147,483,648 to
+    2,147,483,647.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a INTEGER Object """
+        super(INTEGER, self).__init__(**kwargs)
+
+
+class SMALLINT(_TDType, sqltypes.SMALLINT):
+
+    """ Teradata SMALLINT type
+
+    Represents a signed binary integer value in the range -32768 to 32767.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a SMALLINT Object """
+        super(SMALLINT, self).__init__(**kwargs)
+
+
+class BIGINT(_TDType, sqltypes.BIGINT):
+
+    """ Teradata BIGINT type
+
+    Represents a signed, binary integer value from -9,223,372,036,854,775,808
+    to 9,223,372,036,854,775,807.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a BIGINT Object """
+        super(BIGINT, self).__init__(**kwargs)
+
+
+class DECIMAL(_TDType, sqltypes.DECIMAL):
+
+    """ Teradata DECIMAL type
+
+    Represents a decimal number of n digits, with m of those n digits to the
+    right of the decimal point.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a DECIMAL Object """
+        super(DECIMAL, self).__init__(**kwargs)
+
+
+class DATE(_TDType, sqltypes.DATE):
+
+    """ Teradata DATE type
+
+    Identifies a field as a DATE value and simplifies handling and formatting
+    of date variables.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a DATE Object """
+        super(DATE, self).__init__(**kwargs)
 
 
 class BYTEINT(_TDType, sqltypes.Integer):
@@ -63,7 +147,7 @@ class BYTEINT(_TDType, sqltypes.Integer):
         super(BYTEINT, self).__init__(**kwargs)
 
 
-class _TDBinary(sqltypes._LookupExpressionAdapter, _TDType, sqltypes._Binary):
+class _TDBinary(_TDConcatenable, _TDType, sqltypes._Binary):
 
     """ Teradata Binary Types
 
@@ -71,27 +155,6 @@ class _TDBinary(sqltypes._LookupExpressionAdapter, _TDType, sqltypes._Binary):
     data may get truncated upon insertion.
 
     """
-
-    class Comparator(sqltypes._Binary.Comparator):
-        """Define comparison operations for Teradata Binary types."""
-        _blank_dict = util.immutabledict()
-
-        def _adapt_expression(self, op, other_comparator):
-            othertype = other_comparator.type._type_affinity
-            lookup = self.type._expression_adaptations.get(
-                op, self._blank_dict).get(
-                othertype, self.type)
-            if lookup is othertype:
-                return (op, other_comparator.type)
-            elif lookup is self.type._type_affinity:
-                return (op, self.type)
-            else:
-                return (op, lookup)
-
-        def __add__(self, other):
-            return operators.concat_op(self, other)
-
-    comparator_factory = Comparator
 
     class TruncationWarning(UserWarning):
         pass
@@ -151,16 +214,6 @@ class BYTE(_TDBinary, sqltypes.BINARY):
         """
         super(BYTE, self).__init__(length=length, **kwargs)
 
-    @property
-    def _expression_adaptations(self):
-        return {
-            operators.concat_op: {
-                BYTE:    self.__class__,
-                VARBYTE: VARBYTE,
-                BLOB:    BLOB
-            }
-        }
-
 
 class VARBYTE(_TDBinary, sqltypes.VARBINARY):
 
@@ -182,16 +235,6 @@ class VARBYTE(_TDBinary, sqltypes.VARBINARY):
 
         """
         super(VARBYTE, self).__init__(length=length, **kwargs)
-
-    @property
-    def _expression_adaptations(self):
-        return {
-            operators.concat_op: {
-                BYTE:    self.__class__,
-                VARBYTE: self.__class__,
-                BLOB:    BLOB
-            }
-        }
 
 
 class BLOB(_TDBinary, sqltypes.BLOB):
@@ -231,16 +274,6 @@ class BLOB(_TDBinary, sqltypes.BLOB):
         """
         super(BLOB, self).__init__(length=length, **kwargs)
         self.multiplier = multiplier
-
-    @property
-    def _expression_adaptations(self):
-        return {
-            operators.concat_op: {
-                BYTE:    self.__class__,
-                VARBYTE: self.__class__,
-                BLOB:    self.__class__
-            }
-        }
 
 
 class FLOAT(_TDType, sqltypes.FLOAT):
@@ -870,7 +903,7 @@ class PERIOD_TIMESTAMP(_TDPeriod):
         self.timezone       = timezone
 
 
-class CHAR(_TDType, sqltypes.CHAR):
+class CHAR(_TDConcatenable, _TDType, sqltypes.CHAR):
 
     """ Teradata CHAR type
 
@@ -903,7 +936,7 @@ class CHAR(_TDType, sqltypes.CHAR):
         self.charset = charset
 
 
-class VARCHAR(_TDType, sqltypes.VARCHAR):
+class VARCHAR(_TDConcatenable, _TDType, sqltypes.VARCHAR):
 
     """ Teradata VARCHAR type
 
@@ -930,7 +963,7 @@ class VARCHAR(_TDType, sqltypes.VARCHAR):
         self.charset = charset
 
 
-class CLOB(_TDType, sqltypes.CLOB):
+class CLOB(_TDConcatenable, _TDType, sqltypes.CLOB):
 
     """ Teradata CLOB type
 

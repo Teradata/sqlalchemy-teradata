@@ -13,7 +13,6 @@ from sqlalchemy.schema import DDLElement
 from sqlalchemy.sql import compiler
 from sqlalchemy.sql import table
 from sqlalchemy.sql.expression import ClauseElement, Executable
-from sqlalchemy.types import INTEGER, SMALLINT, BIGINT, DECIMAL, DATE
 
 import re
 
