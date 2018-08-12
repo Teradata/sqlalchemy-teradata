@@ -24,12 +24,12 @@ import sqlalchemy_teradata.types as tdtypes
 # ischema names is used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
 
-    # SQL standard types (unmodified)
-    'i' : sqltypes.INTEGER,
-    'i2': sqltypes.SMALLINT,
-    'i8': sqltypes.BIGINT,
-    'd' : sqltypes.DECIMAL,
-    'da': sqltypes.DATE,
+    # SQL standard types (modified only to extend _TDComparable)
+    'i' : tdtypes.INTEGER,
+    'i2': tdtypes.SMALLINT,
+    'i8': tdtypes.BIGINT,
+    'd' : tdtypes.DECIMAL,
+    'da': tdtypes.DATE,
 
     # Numeric types
     'i1': tdtypes.BYTEINT,
@@ -238,7 +238,7 @@ class TeradataDialect(default.DefaultDialect):
         return self.normalize_name(
             connection.execute('select database').scalar())
 
-    def _get_column_help(self, connection, schema,table_name,column_name):
+    def _get_column_help(self, connection, schema, table_name, column_name):
         stmt = 'help column ' + schema + '.' + table_name + '.' + column_name
         res  = connection.execute(stmt).fetchall()[0]
 

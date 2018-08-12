@@ -6,14 +6,42 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 from sqlalchemy import types
-from sqlalchemy.sql import sqltypes
+from sqlalchemy.sql import sqltypes, operators
+from sqlalchemy_teradata.adapter import TeradataExpressionAdapter
 
 import datetime
 import warnings
 import teradata.datatypes as td_dtypes
 
 
-class _TDType:
+class _TDComparable:
+
+    class Comparator(types.TypeEngine.Comparator):
+
+        def _adapt_expression(self, op, other_comparator):
+            lookup = TeradataExpressionAdapter().process(
+                self.type.__class__,
+                op=op, other=other_comparator.type.__class__)
+            return (op, lookup)
+
+    comparator_factory = Comparator
+
+
+class _TDConcatenable:
+
+    class Comparator(_TDComparable.Comparator):
+
+        def _adapt_expression(self, op, other_comparator):
+            return super(_TDConcatenable.Comparator, self)._adapt_expression(
+                operators.concat_op if op is operators.add and
+                    issubclass(other_comparator.type.__class__,
+                               self.type._type_affinity)
+                else op, other_comparator)
+
+    comparator_factory = Comparator
+
+
+class _TDType(_TDComparable):
 
     """ Teradata Data Type
 
@@ -27,6 +55,80 @@ class _TDType:
 
     def __str__(self):
         return self._parse_name(self.__class__.__name__)
+
+
+class INTEGER(_TDType, sqltypes.INTEGER):
+
+    """ Teradata INTEGER type
+
+    Represents a signed, binary integer value from -2,147,483,648 to
+    2,147,483,647.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a INTEGER Object """
+        super(INTEGER, self).__init__(**kwargs)
+
+
+class SMALLINT(_TDType, sqltypes.SMALLINT):
+
+    """ Teradata SMALLINT type
+
+    Represents a signed binary integer value in the range -32768 to 32767.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a SMALLINT Object """
+        super(SMALLINT, self).__init__(**kwargs)
+
+
+class BIGINT(_TDType, sqltypes.BIGINT):
+
+    """ Teradata BIGINT type
+
+    Represents a signed, binary integer value from -9,223,372,036,854,775,808
+    to 9,223,372,036,854,775,807.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a BIGINT Object """
+        super(BIGINT, self).__init__(**kwargs)
+
+
+class DECIMAL(_TDType, sqltypes.DECIMAL):
+
+    """ Teradata DECIMAL type
+
+    Represents a decimal number of n digits, with m of those n digits to the
+    right of the decimal point.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a DECIMAL Object """
+        super(DECIMAL, self).__init__(**kwargs)
+
+
+class DATE(_TDType, sqltypes.DATE):
+
+    """ Teradata DATE type
+
+    Identifies a field as a DATE value and simplifies handling and formatting
+    of date variables.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a DATE Object """
+        super(DATE, self).__init__(**kwargs)
 
 
 class BYTEINT(_TDType, sqltypes.Integer):
@@ -45,7 +147,7 @@ class BYTEINT(_TDType, sqltypes.Integer):
         super(BYTEINT, self).__init__(**kwargs)
 
 
-class _TDBinary(_TDType, sqltypes._Binary):
+class _TDBinary(_TDConcatenable, _TDType, sqltypes._Binary):
 
     """ Teradata Binary Types
 
@@ -77,12 +179,13 @@ class _TDBinary(_TDType, sqltypes._Binary):
         DBAPIBinary = dialect.dbapi.Binary
 
         def process(value):
-            if value is not None:
+            bin_length = self._length()
+            if value is not None and bin_length is not None:
                 value = DBAPIBinary(value)
-                if len(value) > self._length():
+                if len(value) > bin_length:
                     warnings.warn(
-                        'Attempting to insert an item that is larger than the space '
-                            'allocated for this column. Data may get truncated.',
+                        'Attempting to insert an item that is larger than the '
+                        'space allocated for this column. Data may get truncated.',
                         self.TruncationWarning)
                 return value
             else:
@@ -802,7 +905,7 @@ class PERIOD_TIMESTAMP(_TDPeriod):
         self.timezone       = timezone
 
 
-class CHAR(_TDType, sqltypes.CHAR):
+class CHAR(_TDConcatenable, _TDType, sqltypes.CHAR):
 
     """ Teradata CHAR type
 
@@ -835,7 +938,7 @@ class CHAR(_TDType, sqltypes.CHAR):
         self.charset = charset
 
 
-class VARCHAR(_TDType, sqltypes.VARCHAR):
+class VARCHAR(_TDConcatenable, _TDType, sqltypes.VARCHAR):
 
     """ Teradata VARCHAR type
 
@@ -862,7 +965,7 @@ class VARCHAR(_TDType, sqltypes.VARCHAR):
         self.charset = charset
 
 
-class CLOB(_TDType, sqltypes.CLOB):
+class CLOB(_TDConcatenable, _TDType, sqltypes.CLOB):
 
     """ Teradata CLOB type
 
