@@ -15,7 +15,15 @@ import teradata.datatypes as td_dtypes
 
 class _TDComparable:
 
+    """Teradata Comparable Data Type."""
+
     class Comparator(types.TypeEngine.Comparator):
+
+        """Comparator for expression adaptation.
+
+        Use the TeradataExpressionAdapter to process the resulting types
+        for binary operations over Teradata types.
+        """
 
         def _adapt_expression(self, op, other_comparator):
             lookup = TeradataExpressionAdapter().process(
@@ -28,7 +36,20 @@ class _TDComparable:
 
 class _TDConcatenable:
 
+    """Teradata Concatenable Data Type.
+
+    This family of types currently encompasses the binary types
+    (BYTE, VARBYTE, BLOB) and the character types (CHAR, VARCHAR, CLOB).
+    """
+
     class Comparator(_TDComparable.Comparator):
+
+        """Comparator for expression adaptation.
+
+        Overloads the addition (+) operator over concatenable Teradata types
+        to use concat_op. Note that this overloading only occurs between types
+        within the same type_affinity.
+        """
 
         def _adapt_expression(self, op, other_comparator):
             return super(_TDConcatenable.Comparator, self)._adapt_expression(
@@ -1000,10 +1021,10 @@ class CLOB(_TDConcatenable, _TDType, sqltypes.CLOB):
 
 
 class TeradataExpressionAdapter:
-    """Expression Adapter for Teradata Data
+    """Expression Adapter for Teradata Data types.
 
     For inferring the resulting type of a BinaryExpression whose operation
-    involves operands that are of Teradata
+    involves operands that are of Teradata types.
     """
 
     def process(self, type_, op=None, other=None, **kw):
