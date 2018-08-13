@@ -5,9 +5,8 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import types
+from sqlalchemy import types, util
 from sqlalchemy.sql import sqltypes, operators
-from sqlalchemy_teradata.adapter import TeradataExpressionAdapter
 
 import datetime
 import warnings
@@ -998,3 +997,147 @@ class CLOB(_TDConcatenable, _TDType, sqltypes.CLOB):
         super(CLOB, self).__init__(length=length, **kwargs)
         self.charset    = charset
         self.multiplier = multiplier
+
+
+class TeradataExpressionAdapter:
+    """Expression Adapter for Teradata Data
+
+    For inferring the resulting type of a BinaryExpression whose operation
+    involves operands that are of Teradata
+    """
+
+    def process(self, type_, op=None, other=None, **kw):
+        """Adapts the expression.
+
+        Infer the type of the resultant BinaryExpression defined by the passed
+        in operator and operands.
+
+        Args:
+            type_: The type of the left operand.
+
+            op:    The operator of the BinaryExpression.
+
+            other: The type of the right operand.
+
+        Returns:
+            The type to adapt the BinaryExpression to.
+        """
+
+        return getattr(self, 'visit_' + type_.__visit_name__,
+                       lambda *args, **kw: {})(type_, **kw) \
+            .get(op, util.immutabledict()) \
+            .get(other, type_)
+
+    @staticmethod
+    def _flatten_tuple_dict(tuple_dict):
+        """Flatten a dictionary with (many-to-one) tuple keys to a standard one."""
+
+        flat_dict = {}
+        for k_tup, v in tuple_dict.items():
+            for k in k_tup:
+                flat_dict[k] = v
+        return flat_dict
+
+    def visit_INTEGER(self, type_, **kw):
+        return self._flatten_tuple_dict({
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                BIGINT:  BIGINT,
+                DECIMAL: DECIMAL,
+                FLOAT:   FLOAT,
+                NUMBER:  NUMBER
+            }
+        })
+
+    def visit_SMALLINT(self, type_, **kw):
+        return self._flatten_tuple_dict({
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                INTEGER:  INTEGER,
+                SMALLINT: INTEGER,
+                BIGINT:   BIGINT,
+                DECIMAL:  DECIMAL,
+                FLOAT:    FLOAT,
+                NUMBER:   NUMBER,
+                BYTEINT:  INTEGER
+            }
+        })
+
+    def visit_BIGINT(self, type_, **kw):
+        return self._flatten_tuple_dict({
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                DECIMAL: DECIMAL,
+                FLOAT:   FLOAT,
+                NUMBER:  NUMBER
+            }
+        })
+
+    def visit_DECIMAL(self, type_, **kw):
+        return self._flatten_tuple_dict({
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                FLOAT:  FLOAT,
+                NUMBER: NUMBER
+            }
+        })
+
+    def visit_DATE(self, type_, **kw):
+        return self._flatten_tuple_dict({
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                DATE: INTEGER
+            }
+        })
+
+    def visit_CHAR(self, type_, **kw):
+        return {
+            operators.concat_op: {
+                VARCHAR: VARCHAR,
+                CLOB:    CLOB
+            }
+        }
+
+    def visit_VARCHAR(self, type_, **kw):
+        return {
+            operators.concat_op: {
+                CLOB: CLOB
+            }
+        }
+
+    def visit_BYTEINT(self, type_, **kw):
+        return self._flatten_tuple_dict({
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                INTEGER:  INTEGER,
+                SMALLINT: INTEGER,
+                BIGINT:   BIGINT,
+                DECIMAL:  DECIMAL,
+                FLOAT:    FLOAT,
+                NUMBER:   NUMBER,
+                BYTEINT:  INTEGER
+            }
+        })
+
+    def visit_BYTE(self, type_, **kw):
+        return {
+            operators.concat_op: {
+                VARBYTE: VARBYTE,
+                BLOB:    BLOB
+            }
+        }
+
+    def visit_VARBYTE(self, type_, **kw):
+        return {
+            operators.concat_op: {
+                BLOB: BLOB
+            }
+        }
+
+    def visit_NUMBER(self, type_, **kw):
+        return self._flatten_tuple_dict({
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                FLOAT: FLOAT
+            }
+        })
