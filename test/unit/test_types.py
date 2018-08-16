@@ -13,7 +13,7 @@ from sqlalchemy_teradata.compiler import TeradataTypeCompiler
 from sqlalchemy_teradata.dialect import TeradataDialect
 
 import datetime as dt
-import enum
+import decimal, enum
 
 """
 Unit testing for compiling Generic, SQL Standard, and Teradata data types.
@@ -277,6 +277,7 @@ class TestCompileTDTypes(fixtures.TestBase):
                 assert(self._compile(INTERVAL_SECOND(prec, fsec)) ==
                     'INTERVAL SECOND({}, {})'.format(prec, fsec))
 
+
 class TestStrTDTypes(fixtures.TestBase):
 
     def test_str_default(self):
@@ -311,3 +312,37 @@ class TestStrTDTypes(fixtures.TestBase):
         assert(str(PERIOD_DATE())               == 'PERIOD DATE')
         assert(str(PERIOD_TIME())               == 'PERIOD TIME')
         assert(str(PERIOD_TIMESTAMP())          == 'PERIOD TIMESTAMP')
+
+
+class TestLiteralTypes(fixtures.TestBase):
+
+    def _compile_literal(self, inst):
+        return str(inst.compile(dialect=TeradataDialect(),
+                                compile_kwargs={'literal_binds': True}))
+
+    def test_coerce_compared_literal(self):
+        self.test_col = Column('column_test', INTEGER)
+
+        assert(self._compile_literal(self.test_col + 1) ==
+            'column_test + 1')
+        assert(self._compile_literal(self.test_col + 31.415) ==
+            'column_test + 3.14150000000000e+01')
+        assert(self._compile_literal(self.test_col + decimal.Decimal(1)) ==
+            'column_test + 1.')
+        assert(self._compile_literal(self.test_col + decimal.Decimal('1.1')) ==
+            'column_test + 1.1')
+        assert(self._compile_literal(self.test_col + str.encode('foobar')) ==
+            "column_test + '666f6f626172'XB")
+        assert(self._compile_literal(self.test_col + 'foobar') ==
+            "column_test + 'foobar'")
+        assert(self._compile_literal(self.test_col + u'foob\u00e3r') ==
+            "column_test + 'foobãr'")
+        assert(self._compile_literal(self.test_col + dt.date(
+                year=1, month=2, day=3)) ==
+            "column_test + DATE '0001-02-03'")
+        assert(self._compile_literal(self.test_col + dt.time(
+                hour=15, minute=37, second=25)) ==
+            "column_test + TIME '15:37:25'")
+        assert(self._compile_literal(self.test_col + dt.datetime(
+                year=1912, month=6, day=23, hour=15, minute=37, second=25)) ==
+            "column_test + TIMESTAMP '1912-06-23 15:37:25'")
