@@ -3,11 +3,12 @@ from sqlalchemy import testing
 from sqlalchemy import sql
 from sqlalchemy.sql import operators
 from sqlalchemy.testing.plugin.pytestplugin import *
-from sqlalchemy_teradata.base import CreateView, DropView, CreateTableAs
+from sqlalchemy_teradata.base import CreateView, DropView
 
 import datetime, decimal
 import itertools
 import sqlalchemy_teradata as sqlalch_td
+import teradata.datatypes as td_dtypes
 
 """
 Integration testing for Teradata type adaptation.
@@ -50,6 +51,20 @@ class TestAdaptation(testing.fixtures.TestBase):
             Column('c0', sqlalch_td.BYTE(length=100)),
             Column('c1', sqlalch_td.VARBYTE(length=100)),
             Column('c2', sqlalch_td.BLOB(length=100)))
+        cls.table_interval= Table('t_test_interval', cls.metadata,
+            Column('c0',  sqlalch_td.INTERVAL_YEAR()),
+            Column('c1',  sqlalch_td.INTERVAL_YEAR_TO_MONTH()),
+            Column('c2',  sqlalch_td.INTERVAL_MONTH()),
+            Column('c3',  sqlalch_td.INTERVAL_DAY()),
+            Column('c4',  sqlalch_td.INTERVAL_DAY_TO_HOUR()),
+            Column('c5',  sqlalch_td.INTERVAL_DAY_TO_MINUTE()),
+            Column('c6',  sqlalch_td.INTERVAL_DAY_TO_SECOND()),
+            Column('c7',  sqlalch_td.INTERVAL_HOUR()),
+            Column('c8',  sqlalch_td.INTERVAL_HOUR_TO_MINUTE()),
+            Column('c9',  sqlalch_td.INTERVAL_HOUR_TO_SECOND()),
+            Column('c10', sqlalch_td.INTERVAL_MINUTE()),
+            Column('c11', sqlalch_td.INTERVAL_MINUTE_TO_SECOND()),
+            Column('c12', sqlalch_td.INTERVAL_SECOND()))
         cls.metadata.create_all()
 
     def teardown_class(cls):
@@ -139,7 +154,8 @@ class TestAdaptation(testing.fixtures.TestBase):
         character = self._generate_intraclass_triples(self.table_character.c, ops)
         datetime  = self._generate_intraclass_triples(self.table_datetime.c, ops)
         binary    = self._generate_intraclass_triples(self.table_binary.c, ops)
-        triples = numeric + character + datetime + binary
+        interval  = self._generate_intraclass_triples(self.table_interval.c, ops)
+        triples   = numeric + character + datetime + binary + interval
 
         self._test_adaptation(triples)
 
@@ -148,7 +164,8 @@ class TestAdaptation(testing.fixtures.TestBase):
 
         ops           = self.arith_ops
         classes_tuple = (self.table_numeric.c, self.table_character.c,
-                         self.table_datetime.c, self.table_binary.c)
+                         self.table_datetime.c, self.table_binary.c,
+                         self.table_interval.c)
 
         triples = self._generate_interclass_triples(classes_tuple, ops)
 
@@ -160,9 +177,6 @@ class TestAdaptation(testing.fixtures.TestBase):
         """
 
         ops           = self.arith_ops
-                        # TODO timedelta and Interval
-                        # TODO Period
-                        # TODO boolean?
         literals      = (10, 3.1415926535897932383,
                          decimal.Decimal(11), decimal.Decimal('11.1'),
                          str.encode('foobar'),
@@ -170,10 +184,24 @@ class TestAdaptation(testing.fixtures.TestBase):
                          datetime.date(year=1, month=2, day=3),
                          datetime.time(hour=15, minute=37, second=25),
                          datetime.datetime(year=1912, month=6, day=23,
-                                           hour=15, minute=37, second=25))
+                                           hour=15, minute=37, second=25),
+                         td_dtypes.Interval(years=20),
+                         td_dtypes.Interval(years=20, months=20),
+                         td_dtypes.Interval(months=20),
+                         td_dtypes.Interval(days=20),
+                         td_dtypes.Interval(days=20, hours=20),
+                         td_dtypes.Interval(days=20, minutes=20),
+                         td_dtypes.Interval(days=20, seconds=20.20),
+                         td_dtypes.Interval(hours=20),
+                         td_dtypes.Interval(hours=20, minutes=20),
+                         td_dtypes.Interval(hours=20, seconds=20.20),
+                         td_dtypes.Interval(minutes=20),
+                         td_dtypes.Interval(minutes=20, seconds=20.20),
+                         td_dtypes.Interval(seconds=20.20))
         classes_tuple = ((*self.table_numeric.c, *self.table_character.c,
-                          *self.table_datetime.c, *self.table_binary.c),
-                          literals)
+                          *self.table_datetime.c, *self.table_binary.c,
+                          *self.table_interval.c),
+                         literals)
 
         triples = self._generate_interclass_triples(classes_tuple, ops)
 

@@ -14,11 +14,9 @@ import teradata.datatypes as td_dtypes
 
 
 class _TDComparable:
-
     """Teradata Comparable Data Type."""
 
     class Comparator(types.TypeEngine.Comparator):
-
         """Comparator for expression adaptation.
 
         Use the TeradataExpressionAdapter to process the resulting types
@@ -26,15 +24,14 @@ class _TDComparable:
         """
 
         def _adapt_expression(self, op, other_comparator):
-            lookup = TeradataExpressionAdapter().process(
+            expr_type = TeradataExpressionAdapter().process(
                 self.type, op=op, other=other_comparator.type)
-            return (op, lookup)
+            return op, expr_type
 
     comparator_factory = Comparator
 
 
 class _TDConcatenable:
-
     """Teradata Concatenable Data Type.
 
     This family of types currently encompasses the binary types
@@ -42,7 +39,6 @@ class _TDConcatenable:
     """
 
     class Comparator(_TDComparable.Comparator):
-
         """Comparator for expression adaptation.
 
         Overloads the addition (+) operator over concatenable Teradata types
@@ -60,7 +56,6 @@ class _TDConcatenable:
 
 
 class _TDLiteralCoercer:
-
     """Mixin for literal type processing against Teradata data types."""
 
     def coerce_compared_value(self, op, value):
@@ -82,6 +77,11 @@ class _TDLiteralCoercer:
             return TIMESTAMP()
         elif type_ == datetime.time:
             return TIME()
+        elif type_ == td_dtypes.Interval:
+            return globals().get(
+                'INTERVAL_' + value.type.replace(' ', '_'),
+                sqltypes.NullType)()
+        # TODO PERIOD
 
         return sqltypes.NullType()
 
@@ -475,6 +475,12 @@ class _TDInterval(_TDType, types.UserDefinedType):
         """
         def process(value):
             return value
+        return process
+
+    def literal_processor(self, dialect):
+
+        def process(value):
+            return "INTERVAL '%s' %s" % (value, value.type)
         return process
 
 class INTERVAL_YEAR(_TDInterval):
@@ -1093,7 +1099,8 @@ class TeradataExpressionAdapter:
         """Adapts the expression.
 
         Infer the type of the resultant BinaryExpression defined by the passed
-        in operator and operands.
+        in operator and operands. This resulting type should be consistent with
+        the Teradata database when the operation is defined.
 
         Args:
             type_: The type instance of the left operand.
@@ -1106,8 +1113,112 @@ class TeradataExpressionAdapter:
             The type to adapt the BinaryExpression to.
         """
 
+        if isinstance(type_, _TDInterval) or isinstance(other, _TDInterval):
+            adapt_strategy = _IntervalRuleStrategy()
+        else:
+            adapt_strategy = _LookupStrategy()
+
+        return adapt_strategy.adapt(type_, op, other, **kw)
+
+
+class _AdaptStrategy:
+    """Interface for expression adaptation strategies."""
+
+    def adapt(self, type_, op, other, **kw):
+        """Adapt the expression according to some strategy.
+
+        Given the type of the left and right operand, and the operator, produce
+        a resulting type class for the BinaryExpression.
+        """
+
+        raise NotImplementedError()
+
+class _IntervalRuleStrategy(_AdaptStrategy):
+    """Expression adaptation strategy which follows a set of rules for inferring
+    Teradata Interval types.
+    """
+
+    ordering = ('YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND')
+
+    def adapt(self, type_, op, other, **kw):
+        """Adapt the expression by a set of predefined rules over the Teradata
+        Interval types.
+        """
+
+        # If the (Interval) types are equal, simply return the class of
+        # those types
+        if type_.__class__ == other.__class__:
+            return type_.__class__
+
+        # If the (Interval) types are not equal, return the valid Interval type
+        # with the greatest range.
+        #
+        # E.g. INTERVAL YEAR TO MONTH and INTERVAL DAY TO HOUR -->
+        #      INTERVAL YEAR TO HOUR.
+        #
+        # Otherwise if the resulting Interval type is invalid, return NullType.
+        #
+        # E.g. INTERVAL YEAR TO MONTH and INTERVAL MINUTE TO SECOND -->
+        #      INTERVAL YEAR TO SECOND (invalid) -->
+        #      NullType
+        elif isinstance(type_, _TDInterval) and isinstance(other, _TDInterval):
+            tokens = self._tokenize_name(type_.__class__.__name__) + \
+                     self._tokenize_name(other.__class__.__name__)
+            tokens.sort(key=lambda tok: self.ordering.index(tok))
+
+            return globals().get(
+                self._combine_tokens(tokens[0], tokens[-1]),
+                sqltypes.NullType)
+
+        # Else the binary expression has an Interval and non-Interval operand.
+        # If the non-Interval operand is a Date, Time, or Datetime, return that
+        # type, otherwise return the Interval type.
+        else:
+            interval, non_interval = (type_, other) if \
+                    isinstance(type_, _TDInterval) \
+                else (other, type_)
+
+            return non_interval.__class__ if \
+                    isinstance(non_interval, (sqltypes.Date,
+                                              sqltypes.Time,
+                                              sqltypes.DateTime)) \
+                else interval.__class__
+
+    def _tokenize_name(self, interval_name):
+        """Tokenize the name of Interval types.
+
+        Returns a list of (str) tokens of the corresponding Interval type name.
+
+        E.g. 'INTERVAL_DAY_TO_HOUR' --> ['DAY', 'HOUR'].
+        """
+
+        return list(filter(lambda tok: tok not in ('INTERVAL', 'TO'),
+                           interval_name.split('_')))
+
+    def _combine_tokens(self, tok_l, tok_r):
+        """Combine the tokens of an Interval type to form its name.
+
+        Returns a string for the name of the Interval type corresponding to the
+        tokens passed in.
+
+        E.g. tok_l='DAY' and tok_r='HOUR' --> 'INTERVAL_DAY_TO_HOUR'
+        """
+
+        return 'INTERVAL_%s_TO_%s' % (tok_l, tok_r)
+
+class _LookupStrategy(_AdaptStrategy):
+    """Expression adaptation strategy which employs a general lookup table."""
+
+    def adapt(self, type_, op, other, **kw):
+        """Adapt the expression by looking up a hardcoded table.
+
+        The lookup table is defined as `visit_` methods below. Each method
+        returns a nested dictionary which is keyed by the operator and the other
+        operand's type.
+        """
+
         return getattr(self, self._process_visit_name(type_.__visit_name__),
-                       lambda *args, **kw: {})(type_, other, **kw) \
+                   lambda *args, **kw: {})(type_, other, **kw) \
             .get(op, util.immutabledict()) \
             .get(other.__class__, type_.__class__)
 

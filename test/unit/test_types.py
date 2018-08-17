@@ -14,6 +14,7 @@ from sqlalchemy_teradata.dialect import TeradataDialect
 
 import datetime as dt
 import decimal, enum
+import teradata.datatypes as td_dtypes
 
 """
 Unit testing for compiling Generic, SQL Standard, and Teradata data types.
@@ -346,3 +347,43 @@ class TestLiteralTypes(fixtures.TestBase):
         assert(self._compile_literal(self.test_col + dt.datetime(
                 year=1912, month=6, day=23, hour=15, minute=37, second=25)) ==
             "column_test + TIMESTAMP '1912-06-23 15:37:25'")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                years=20)) ==
+            "column_test + INTERVAL '20' YEAR")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                years=20, months=20)) ==
+            "column_test + INTERVAL '20-20' YEAR TO MONTH")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                months=20)) ==
+            "column_test + INTERVAL '20' MONTH")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                days=20)) ==
+            "column_test + INTERVAL '20' DAY")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                days=20, hours=20)) ==
+            "column_test + INTERVAL '20 20' DAY TO HOUR")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                days=20, minutes=20)) ==
+            "column_test + INTERVAL '20 00:20' DAY TO MINUTE")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                days=20, seconds=20.20)) ==
+            "column_test + INTERVAL '20 00:00:20.2' DAY TO SECOND")
+        # TODO This should be HOUR not DAY TO HOUR, possible bug in PyTd?
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                hours=20)) ==
+            "column_test + INTERVAL '20' DAY TO HOUR")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                hours=20, minutes=20)) ==
+            "column_test + INTERVAL '20:20' HOUR TO MINUTE")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                hours=20, seconds=20.20)) ==
+            "column_test + INTERVAL '20:00:20.2' HOUR TO SECOND")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                minutes=20)) ==
+            "column_test + INTERVAL '20' MINUTE")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                minutes=20, seconds=20.20)) ==
+            "column_test + INTERVAL '20:20.2' MINUTE TO SECOND")
+        assert(self._compile_literal(self.test_col + td_dtypes.Interval(
+                seconds=20.20)) ==
+            "column_test + INTERVAL '20.2' SECOND")
