@@ -5,9 +5,9 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import types, util
+from sqlalchemy import util
+from sqlalchemy import types
 from sqlalchemy.sql import sqltypes, operators
-
 import datetime
 import warnings
 import teradata.datatypes as td_dtypes
@@ -130,7 +130,7 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
 
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, precision = 5, scale = 0, **kwargs):
 
         """ Construct a DECIMAL Object """
         super(DECIMAL, self).__init__(**kwargs)
@@ -1021,7 +1021,7 @@ class CLOB(_TDConcatenable, _TDType, sqltypes.CLOB):
 
 
 class TeradataExpressionAdapter:
-    """Expression Adapter for Teradata Data types.
+    """Expression Adapter for Teradata Data Types.
 
     For inferring the resulting type of a BinaryExpression whose operation
     involves operands that are of Teradata types.
