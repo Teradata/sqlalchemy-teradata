@@ -109,10 +109,10 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
 
     """
 
-    def __init__(self, precision = 5, scale = 0, **kwargs):
+    def __init__(self, precision = 38, scale = 19, **kwargs):
 
         """ Construct a DECIMAL Object """
-        super(DECIMAL, self).__init__(**kwargs)
+        super(DECIMAL, self).__init__(precision = precision, scale = scale, **kwargs)
 
 
 class DATE(_TDType, sqltypes.DATE):
