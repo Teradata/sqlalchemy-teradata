@@ -81,7 +81,7 @@ class TeradataDialect(default.DefaultDialect):
 
     name = 'teradata'
     driver = 'teradata'
-    default_paramstyle = 'qmark'
+    paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
 
     statement_compiler = TeradataCompiler
@@ -97,6 +97,7 @@ class TeradataDialect(default.DefaultDialect):
     postfetch_lastrowid = False
     implicit_returning = False
     preexecute_autoincrement_sequences = False
+    case_sensitive = False
 
     construct_arguments = [
       (Table, {
@@ -475,3 +476,5 @@ class TeradataDialect(default.DefaultDialect):
         return self.get_transaction_mode(connection) == 'T'
 
 dialect = TeradataDialect
+preparer = TeradataIdentifierPreparer
+compiler = TeradataCompiler
