@@ -25,54 +25,54 @@ import sqlalchemy_teradata.types as tdtypes
 ischema_names = {
 
     # SQL standard types (modified only to extend _TDComparable)
-    'i' : tdtypes.INTEGER,
-    'i2': tdtypes.SMALLINT,
-    'i8': tdtypes.BIGINT,
-    'd' : tdtypes.DECIMAL,
-    'da': tdtypes.DATE,
+    'I' : tdtypes.INTEGER,
+    'I2': tdtypes.SMALLINT,
+    'I8': tdtypes.BIGINT,
+    'D' : tdtypes.DECIMAL,
+    'DA': tdtypes.DATE,
 
     # Numeric types
-    'i1': tdtypes.BYTEINT,
-    'f' : tdtypes.FLOAT,
-    'n' : tdtypes.NUMBER,
+    'I1': tdtypes.BYTEINT,
+    'F' : tdtypes.FLOAT,
+    'N' : tdtypes.NUMBER,
 
     # Character types
-    'cf': tdtypes.CHAR,
-    'cv': tdtypes.VARCHAR,
-    'co': tdtypes.CLOB,
+    'CF': tdtypes.CHAR,
+    'CV': tdtypes.VARCHAR,
+    'CO': tdtypes.CLOB,
 
     # Datetime types
-    'ts': tdtypes.TIMESTAMP,
-    'sz': tdtypes.TIMESTAMP,    # Timestamp with timezone
-    'at': tdtypes.TIME,
-    'tz': tdtypes.TIME,         # Time with timezone
+    'TS': tdtypes.TIMESTAMP,
+    'SZ': tdtypes.TIMESTAMP,    # Timestamp with timezone
+    'AT': tdtypes.TIME,
+    'TZ': tdtypes.TIME,         # Time with timezone
 
     # Binary types
-    'bf': tdtypes.BYTE,
-    'bv': tdtypes.VARBYTE,
-    'bo': tdtypes.BLOB,
+    'BF': tdtypes.BYTE,
+    'BV': tdtypes.VARBYTE,
+    'BO': tdtypes.BLOB,
 
     # Interval types
-    'dh': tdtypes.INTERVAL_DAY_TO_HOUR,
-    'dm': tdtypes.INTERVAL_DAY_TO_MINUTE,
-    'ds': tdtypes.INTERVAL_DAY_TO_SECOND,
-    'dy': tdtypes.INTERVAL_DAY,
-    'hm': tdtypes.INTERVAL_HOUR_TO_MINUTE,
-    'hr': tdtypes.INTERVAL_HOUR,
-    'hs': tdtypes.INTERVAL_HOUR_TO_SECOND,
-    'mi': tdtypes.INTERVAL_MINUTE,
-    'mo': tdtypes.INTERVAL_MONTH,
-    'ms': tdtypes.INTERVAL_MINUTE_TO_SECOND,
-    'sc': tdtypes.INTERVAL_SECOND,
-    'ym': tdtypes.INTERVAL_YEAR_TO_MONTH,
-    'yr': tdtypes.INTERVAL_YEAR,
+    'DH': tdtypes.INTERVAL_DAY_TO_HOUR,
+    'DM': tdtypes.INTERVAL_DAY_TO_MINUTE,
+    'DS': tdtypes.INTERVAL_DAY_TO_SECOND,
+    'DY': tdtypes.INTERVAL_DAY,
+    'HM': tdtypes.INTERVAL_HOUR_TO_MINUTE,
+    'HR': tdtypes.INTERVAL_HOUR,
+    'HS': tdtypes.INTERVAL_HOUR_TO_SECOND,
+    'MI': tdtypes.INTERVAL_MINUTE,
+    'MO': tdtypes.INTERVAL_MONTH,
+    'MS': tdtypes.INTERVAL_MINUTE_TO_SECOND,
+    'SC': tdtypes.INTERVAL_SECOND,
+    'YM': tdtypes.INTERVAL_YEAR_TO_MONTH,
+    'YR': tdtypes.INTERVAL_YEAR,
 
     # Period types
-    'pd': tdtypes.PERIOD_DATE,
-    'pt': tdtypes.PERIOD_TIME,
-    'pz': tdtypes.PERIOD_TIME,
-    'ps': tdtypes.PERIOD_TIMESTAMP,
-    'pm': tdtypes.PERIOD_TIMESTAMP
+    'PD': tdtypes.PERIOD_DATE,
+    'PT': tdtypes.PERIOD_TIME,
+    'PZ': tdtypes.PERIOD_TIME,
+    'PS': tdtypes.PERIOD_TIMESTAMP,
+    'PM': tdtypes.PERIOD_TIMESTAMP
 }
 
 stringtypes=[ t for t in ischema_names if issubclass(ischema_names[t],sqltypes.String)]
@@ -137,7 +137,7 @@ class TeradataDialect(default.DefaultDialect):
 
     def normalize_name(self, name, **kw):
         if name is not None:
-            return name.strip().lower()
+            return name.strip()
         return name
 
     def has_table(self, connection, table_name, schema=None):
@@ -181,9 +181,7 @@ class TeradataDialect(default.DefaultDialect):
         typ = self._resolve_type(row['ColumnType'],
             length=int(row['ColumnLength'] or 0),
             chartype=chartype[row['CharType']
-                if row['ColumnType'] is not None and
-                   row['ColumnType'].lower() in stringtypes
-                else 0],
+                if row['ColumnType'] in stringtypes else 0],
             prec=int(row['DecimalTotalDigits'] or 0),
             scale=int(row['DecimalFractionalDigits'] or 0),
             fmt=row['ColumnFormat'])

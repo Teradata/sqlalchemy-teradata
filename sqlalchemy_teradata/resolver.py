@@ -89,19 +89,19 @@ class TeradataTypeResolver:
         return type_(format=kw['fmt'])
 
     def visit_PERIOD_TIME(self, type_, **kw):
-        tz = kw['typecode'] == 'pz'
+        tz = kw['typecode'] == 'PZ'
         return type_(format=kw['fmt'], frac_precision=kw['scale'], timezone=tz)
 
     def visit_PERIOD_TIMESTAMP(self, type_, **kw):
-        tz = kw['typecode'] == 'pm'
+        tz = kw['typecode'] == 'PM'
         return type_(format=kw['fmt'], frac_precision=kw['scale'], timezone=tz)
 
     def visit_TIME(self, type_, **kw):
-        tz = kw['typecode'] == 'tz'
+        tz = kw['typecode'] == 'TZ'
         return type_(precision=kw['scale'], timezone=tz)
 
     def visit_TIMESTAMP(self, type_, **kw):
-        tz = kw['typecode'] == 'sz'
+        tz = kw['typecode'] == 'SZ'
         return type_(precision=kw['scale'], timezone=tz)
 
     def _resolve_type_string(self, type_, **kw):
