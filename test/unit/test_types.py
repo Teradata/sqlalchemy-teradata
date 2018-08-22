@@ -327,7 +327,7 @@ class TestLiteralTypes(fixtures.TestBase):
         assert(self._compile_literal(self.test_col + 1) ==
             'column_test + 1')
         assert(self._compile_literal(self.test_col + 31.415) ==
-            'column_test + 3.14150000000000e+01')
+            'column_test + CAST(31.415 as FLOAT)')
         assert(self._compile_literal(self.test_col + decimal.Decimal(1)) ==
             'column_test + 1.')
         assert(self._compile_literal(self.test_col + decimal.Decimal('1.1')) ==

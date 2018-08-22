@@ -10,7 +10,7 @@ from sqlalchemy import types
 from sqlalchemy.sql import sqltypes, operators
 
 import datetime, decimal
-import warnings
+import warnings, sys
 import teradata.datatypes as td_dtypes
 
 
@@ -79,7 +79,7 @@ class _TDLiteralCoercer:
         elif type_ == datetime.time:
             return TIME()
         elif type_ == td_dtypes.Interval:
-            return globals().get(
+            return getattr(sys.modules[__name__],
                 'INTERVAL_' + value.type.replace(' ', '_'),
                 sqltypes.NullType)()
         # TODO PERIOD
@@ -336,7 +336,7 @@ class FLOAT(_TDType, sqltypes.FLOAT):
     def literal_processor(self, dialect):
 
         def process(value):
-            return "%.14e" % value
+            return 'CAST(%s as FLOAT)' % value
         return process
 
 
@@ -1167,9 +1167,9 @@ class _IntervalRuleStrategy(_AdaptStrategy):
                      self._tokenize_name(other.__class__.__name__)
             tokens.sort(key=lambda tok: self.ordering.index(tok))
 
-            return globals().get(
+            return getattr(sys.modules[__name__],
                 self._combine_tokens(tokens[0], tokens[-1]),
-                sqltypes.NullType)
+                sqltypes.NullType)()
 
         # Else the binary expression has an Interval and non-Interval operand.
         # If the non-Interval operand is a Date, Time, or Datetime, return that
