@@ -525,15 +525,12 @@ class TestTypesDetailed(testing.fixtures.TestBase):
         # was instantiated with
         cols = self.inspect.get_columns('table_test_types_binary')
 
-        assert(type(cols[0]['type']) == type(col_types[cols[0]['name']]))
-        assert(str(cols[0]['type'].__dict__) ==
-            str(sqlalch_td.BYTE(length=10).__dict__))
-        assert(type(cols[1]['type']) == type(col_types[cols[1]['name']]))
-        assert(str(cols[1]['type'].__dict__) ==
-            str(sqlalch_td.VARBYTE(length=100).__dict__))
-        assert(type(cols[2]['type']) == type(col_types[cols[2]['name']]))
-        assert(str(cols[2]['type'].__dict__) ==
-            str(sqlalch_td.BLOB(length=1024).__dict__))
+        # This is here because multiplier is not recovered by reflection
+        col_types['column_2'] = sqlalch_td.BLOB(length=1024)
+        for col in cols:
+            assert(type(col['type']) == type(col_types[col['name']]))
+            assert(str(col['type'].__dict__) ==
+                str(col_types[col['name']].__dict__))
 
         text = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed '   \
                'do eiusmod tempor incididunt ut labore et dolore magna aliqua. ' \

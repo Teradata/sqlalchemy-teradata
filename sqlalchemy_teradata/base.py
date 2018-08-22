@@ -56,18 +56,27 @@ class DropView(DDLElement):
 
 @compiles(CreateView)
 def visit_create_view(element, compiler, **kw):
-    return "CREATE VIEW {} AS {}".format(element.name, compiler.sql_compiler.process(element.selectable))
+    return 'CREATE VIEW {} AS {}'.format(
+        element.name,
+        compiler.sql_compiler.process(element.selectable, literal_binds=True))
 
 @compiles(DropView)
 def visit_drop_view(element, compiler, **kw):
     return "DROP VIEW {}".format(element.name)
 
 class CreateTableAs(DDLElement):
-    pass
+
+    def __init__(self, name, selectable, data=False):
+        self.name = name
+        self.selectable = selectable
+        self.data = data
 
 @compiles(CreateTableAs)
-def visit_create_table(element, table, **kw):
-    pass
+def visit_create_table_as(element, compiler, **kw):
+    return 'CREATE TABLE {} AS ({}) WITH{}DATA;'.format(
+        element.name,
+        compiler.sql_compiler.process(element.selectable, literal_binds=True),
+        ' ' if element.data else ' NO ')
 
 class CreateTableQueue(DDLElement):
     pass
