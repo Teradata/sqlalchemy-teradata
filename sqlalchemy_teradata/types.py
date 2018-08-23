@@ -254,7 +254,18 @@ class BYTE(_TDBinary, sqltypes.BINARY):
     def literal_processor(self, dialect):
 
         def process(value):
-            return "'%s'XB" % value.hex()
+
+            try:
+
+              # Python 3.5+
+              return "'%s'XB" % value.hex()
+
+            except AttributeError:
+
+              # try it with codecs
+              import codecs
+              return "'%s'XB" % codecs.encode(value, 'hex').decode('utf-8')
+
         return process
 
 
