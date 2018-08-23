@@ -221,7 +221,7 @@ class TeradataDialect(default.DefaultDialect):
             dbc_columninfo = 'dbc.ColumnsQV'
 
         stmt = select(['*'], from_obj=text(dbc_columninfo)).where(
-            and_(text('DatabaseName=:schema'),
+            and_(text('DatabaseName = :schema'),
                  text('TableName=:table_name')))
 
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchall()
@@ -234,8 +234,9 @@ class TeradataDialect(default.DefaultDialect):
         return [self._get_column_info(row) for row in res]
 
     def _get_default_schema_name(self, connection):
-        return self.normalize_name(
-            connection.execute('select database').scalar())
+        res =  self.normalize_name(
+               connection.execute('select database').scalar())
+        return res.lower()
 
     def _get_column_help(self, connection, schema, table_name, column_name):
         stmt = 'help column ' + schema + '.' + table_name + '.' + column_name
