@@ -8,17 +8,16 @@
 from sqlalchemy import util
 from sqlalchemy import types
 from sqlalchemy.sql import sqltypes, operators
-import datetime
-import warnings
+
+import datetime, decimal
+import warnings, sys
 import teradata.datatypes as td_dtypes
 
 
 class _TDComparable:
-
     """Teradata Comparable Data Type."""
 
     class Comparator(types.TypeEngine.Comparator):
-
         """Comparator for expression adaptation.
 
         Use the TeradataExpressionAdapter to process the resulting types
@@ -26,16 +25,14 @@ class _TDComparable:
         """
 
         def _adapt_expression(self, op, other_comparator):
-            lookup = TeradataExpressionAdapter().process(
-                self.type.__class__,
-                op=op, other=other_comparator.type.__class__)
-            return (op, lookup)
+            expr_type = TeradataExpressionAdapter().process(
+                self.type, op=op, other=other_comparator.type)
+            return op, expr_type
 
     comparator_factory = Comparator
 
 
 class _TDConcatenable:
-
     """Teradata Concatenable Data Type.
 
     This family of types currently encompasses the binary types
@@ -43,7 +40,6 @@ class _TDConcatenable:
     """
 
     class Comparator(_TDComparable.Comparator):
-
         """Comparator for expression adaptation.
 
         Overloads the addition (+) operator over concatenable Teradata types
@@ -54,14 +50,44 @@ class _TDConcatenable:
         def _adapt_expression(self, op, other_comparator):
             return super(_TDConcatenable.Comparator, self)._adapt_expression(
                 operators.concat_op if op is operators.add and
-                    issubclass(other_comparator.type.__class__,
-                               self.type._type_affinity)
+                    isinstance(other_comparator.type, self.type._type_affinity)
                 else op, other_comparator)
 
     comparator_factory = Comparator
 
 
-class _TDType(_TDComparable):
+class _TDLiteralCoercer:
+    """Mixin for literal type processing against Teradata data types."""
+
+    def coerce_compared_value(self, op, value):
+        type_ = type(value)
+
+        if type_ == int:
+            return INTEGER()
+        elif type_ == float:
+            return FLOAT()
+        elif type_ == bytes:
+            return BYTE()
+        elif type_ == str:
+            return VARCHAR()
+        elif type_ == decimal.Decimal:
+            return DECIMAL()
+        elif type_ == datetime.date:
+            return DATE()
+        elif type_ == datetime.datetime:
+            return TIMESTAMP()
+        elif type_ == datetime.time:
+            return TIME()
+        elif type_ == td_dtypes.Interval:
+            return getattr(sys.modules[__name__],
+                'INTERVAL_' + value.type.replace(' ', '_'),
+                sqltypes.NullType)()
+        # TODO PERIOD
+
+        return sqltypes.NullType()
+
+
+class _TDType(_TDLiteralCoercer, _TDComparable):
 
     """ Teradata Data Type
 
@@ -135,20 +161,11 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
         """ Construct a DECIMAL Object """
         super(DECIMAL, self).__init__(**kwargs)
 
+    def literal_processor(self, dialect):
 
-class DATE(_TDType, sqltypes.DATE):
-
-    """ Teradata DATE type
-
-    Identifies a field as a DATE value and simplifies handling and formatting
-    of date variables.
-
-    """
-
-    def __init__(self, **kwargs):
-
-        """ Construct a DATE Object """
-        super(DATE, self).__init__(**kwargs)
+        def process(value):
+            return str(value) + ('' if value.as_tuple()[2] < 0 else '.')
+        return process
 
 
 class BYTEINT(_TDType, sqltypes.Integer):
@@ -234,6 +251,12 @@ class BYTE(_TDBinary, sqltypes.BINARY):
         """
         super(BYTE, self).__init__(length=length, **kwargs)
 
+    def literal_processor(self, dialect):
+
+        def process(value):
+            return "'%s'XB" % value.hex()
+        return process
+
 
 class VARBYTE(_TDBinary, sqltypes.VARBINARY):
 
@@ -310,6 +333,12 @@ class FLOAT(_TDType, sqltypes.FLOAT):
         """ Construct a FLOAT object """
         super(FLOAT, self).__init__(**kwargs)
 
+    def literal_processor(self, dialect):
+
+        def process(value):
+            return 'CAST(%s as FLOAT)' % value
+        return process
+
 
 class NUMBER(_TDType, sqltypes.NUMERIC):
 
@@ -340,6 +369,27 @@ class NUMBER(_TDType, sqltypes.NUMERIC):
         super(NUMBER, self).__init__(precision=precision, scale=scale, **kwargs)
 
 
+class DATE(_TDType, sqltypes.DATE):
+
+    """ Teradata DATE type
+
+    Identifies a field as a DATE value and simplifies handling and formatting
+    of date variables.
+
+    """
+
+    def __init__(self, **kwargs):
+
+        """ Construct a DATE Object """
+        super(DATE, self).__init__(**kwargs)
+
+    def literal_processor(self, dialect):
+
+        def process(value):
+            return "DATE '%s'" % value
+        return process
+
+
 class TIME(_TDType, sqltypes.TIME):
 
     """ Teradata TIME type
@@ -362,6 +412,12 @@ class TIME(_TDType, sqltypes.TIME):
         """
         super(TIME, self).__init__(timezone=timezone, **kwargs)
         self.precision = precision
+
+    def literal_processor(self, dialect):
+
+        def process(value):
+            return "TIME '%s'" % value
+        return process
 
 
 class TIMESTAMP(_TDType, sqltypes.TIMESTAMP):
@@ -386,8 +442,15 @@ class TIMESTAMP(_TDType, sqltypes.TIMESTAMP):
         super(TIMESTAMP, self).__init__(timezone=timezone, **kwargs)
         self.precision = precision
 
+    def literal_processor(self, dialect):
+
+        def process(value):
+            return "TIMESTAMP '%s'" % value
+        return process
+
     def get_dbapi_type(self, dbapi):
       return dbapi.DATETIME
+
 
 class _TDInterval(_TDType, types.UserDefinedType):
 
@@ -413,6 +476,12 @@ class _TDInterval(_TDType, types.UserDefinedType):
         """
         def process(value):
             return value
+        return process
+
+    def literal_processor(self, dialect):
+
+        def process(value):
+            return "INTERVAL '%s' %s" % (value, value.type)
         return process
 
 class INTERVAL_YEAR(_TDInterval):
@@ -1031,38 +1100,165 @@ class TeradataExpressionAdapter:
         """Adapts the expression.
 
         Infer the type of the resultant BinaryExpression defined by the passed
-        in operator and operands.
+        in operator and operands. This resulting type should be consistent with
+        the Teradata database when the operation is defined.
 
         Args:
-            type_: The type of the left operand.
+            type_: The type instance of the left operand.
 
             op:    The operator of the BinaryExpression.
 
-            other: The type of the right operand.
+            other: The type instance of the right operand.
 
         Returns:
             The type to adapt the BinaryExpression to.
         """
 
-        return getattr(self, 'visit_' + type_.__visit_name__,
-                       lambda *args, **kw: {})(type_, **kw) \
-            .get(op, util.immutabledict()) \
-            .get(other, type_)
+        if isinstance(type_, _TDInterval) or isinstance(other, _TDInterval):
+            adapt_strategy = _IntervalRuleStrategy()
+        else:
+            adapt_strategy = _LookupStrategy()
 
-    @staticmethod
-    def _flatten_tuple_dict(tuple_dict):
-        """Flatten a dictionary with (many-to-one) tuple keys to a standard one."""
+        return adapt_strategy.adapt(type_, op, other, **kw)
+
+
+class _AdaptStrategy:
+    """Interface for expression adaptation strategies."""
+
+    def adapt(self, type_, op, other, **kw):
+        """Adapt the expression according to some strategy.
+
+        Given the type of the left and right operand, and the operator, produce
+        a resulting type class for the BinaryExpression.
+        """
+
+        raise NotImplementedError()
+
+class _IntervalRuleStrategy(_AdaptStrategy):
+    """Expression adaptation strategy which follows a set of rules for inferring
+    Teradata Interval types.
+    """
+
+    ordering = ('YEAR', 'MONTH', 'DAY', 'HOUR', 'MINUTE', 'SECOND')
+
+    def adapt(self, type_, op, other, **kw):
+        """Adapt the expression by a set of predefined rules over the Teradata
+        Interval types.
+        """
+
+        # If the (Interval) types are equal, simply return the class of
+        # those types
+        if type_.__class__ == other.__class__:
+            return type_.__class__
+
+        # If the (Interval) types are not equal, return the valid Interval type
+        # with the greatest range.
+        #
+        # E.g. INTERVAL YEAR TO MONTH and INTERVAL DAY TO HOUR -->
+        #      INTERVAL YEAR TO HOUR.
+        #
+        # Otherwise if the resulting Interval type is invalid, return NullType.
+        #
+        # E.g. INTERVAL YEAR TO MONTH and INTERVAL MINUTE TO SECOND -->
+        #      INTERVAL YEAR TO SECOND (invalid) -->
+        #      NullType
+        elif isinstance(type_, _TDInterval) and isinstance(other, _TDInterval):
+            tokens = self._tokenize_name(type_.__class__.__name__) + \
+                     self._tokenize_name(other.__class__.__name__)
+            tokens.sort(key=lambda tok: self.ordering.index(tok))
+
+            return getattr(sys.modules[__name__],
+                self._combine_tokens(tokens[0], tokens[-1]),
+                sqltypes.NullType)()
+
+        # Else the binary expression has an Interval and non-Interval operand.
+        # If the non-Interval operand is a Date, Time, or Datetime, return that
+        # type, otherwise return the Interval type.
+        else:
+            interval, non_interval = (type_, other) if \
+                    isinstance(type_, _TDInterval) \
+                else (other, type_)
+
+            return non_interval.__class__ if \
+                    isinstance(non_interval, (sqltypes.Date,
+                                              sqltypes.Time,
+                                              sqltypes.DateTime)) \
+                else interval.__class__
+
+    def _tokenize_name(self, interval_name):
+        """Tokenize the name of Interval types.
+
+        Returns a list of (str) tokens of the corresponding Interval type name.
+
+        E.g. 'INTERVAL_DAY_TO_HOUR' --> ['DAY', 'HOUR'].
+        """
+
+        return list(filter(lambda tok: tok not in ('INTERVAL', 'TO'),
+                           interval_name.split('_')))
+
+    def _combine_tokens(self, tok_l, tok_r):
+        """Combine the tokens of an Interval type to form its name.
+
+        Returns a string for the name of the Interval type corresponding to the
+        tokens passed in.
+
+        E.g. tok_l='DAY' and tok_r='HOUR' --> 'INTERVAL_DAY_TO_HOUR'
+        """
+
+        return 'INTERVAL_%s_TO_%s' % (tok_l, tok_r)
+
+class _LookupStrategy(_AdaptStrategy):
+    """Expression adaptation strategy which employs a general lookup table."""
+
+    def adapt(self, type_, op, other, **kw):
+        """Adapt the expression by looking up a hardcoded table.
+
+        The lookup table is defined as `visit_` methods below. Each method
+        returns a nested dictionary which is keyed by the operator and the other
+        operand's type.
+        """
+
+        return getattr(self, self._process_visit_name(type_.__visit_name__),
+                   lambda *args, **kw: {})(type_, other, **kw) \
+            .get(op, util.immutabledict()) \
+            .get(other.__class__, type_.__class__)
+
+    def _process_visit_name(self, visit_name):
+        """Generate the corresponding visit function name from a type's
+        __visit_name__ field.
+        """
+
+        prefix = 'visit_'
+        return prefix + visit_name
+
+    def _flatten_tuple_keyed_dict(self, tuple_dict):
+        """Recursively flatten a dictionary with (many-to-one) tuple keys to a
+        standard one.
+        """
 
         flat_dict = {}
-        for k_tup, v in tuple_dict.items():
-            for k in k_tup:
-                flat_dict[k] = v
+        for ks, v in tuple_dict.items():
+            v = self._flatten_tuple_keyed_dict(v) if isinstance(v, dict) else v
+            if isinstance(ks, tuple):
+                for k in ks:
+                    flat_dict[k] = v
+            else:
+                flat_dict[ks] = v
         return flat_dict
 
-    def visit_INTEGER(self, type_, **kw):
-        return self._flatten_tuple_dict({
-            (operators.add, operators.sub, operators.mul,
-             operators.truediv, operators.mod): {
+    def visit_INTEGER(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.add: {
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                BIGINT:  BIGINT,
+                DECIMAL: DECIMAL,
+                FLOAT:   FLOAT,
+                NUMBER:  NUMBER,
+                DATE:    DATE
+            },
+            (operators.sub, operators.mul, operators.truediv,
+             operators.mod): {
+                (CHAR, VARCHAR, BLOB): FLOAT,
                 BIGINT:  BIGINT,
                 DECIMAL: DECIMAL,
                 FLOAT:   FLOAT,
@@ -1070,77 +1266,143 @@ class TeradataExpressionAdapter:
             }
         })
 
-    def visit_SMALLINT(self, type_, **kw):
-        return self._flatten_tuple_dict({
-            (operators.add, operators.sub, operators.mul,
-             operators.truediv, operators.mod): {
-                INTEGER:  INTEGER,
-                SMALLINT: INTEGER,
-                BIGINT:   BIGINT,
-                DECIMAL:  DECIMAL,
-                FLOAT:    FLOAT,
-                NUMBER:   NUMBER,
-                BYTEINT:  INTEGER
+    def visit_SMALLINT(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.add: {
+                (INTEGER, SMALLINT, BYTEINT, DATE): INTEGER,
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                BIGINT:  BIGINT,
+                DECIMAL: DECIMAL,
+                FLOAT:   FLOAT,
+                NUMBER:  NUMBER,
+                DATE:    DATE
+            },
+            (operators.sub, operators.mul, operators.truediv,
+             operators.mod): {
+                (INTEGER, SMALLINT, BYTEINT, DATE): INTEGER,
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                BIGINT:  BIGINT,
+                DECIMAL: DECIMAL,
+                FLOAT:   FLOAT,
+                NUMBER:  NUMBER,
             }
         })
 
-    def visit_BIGINT(self, type_, **kw):
-        return self._flatten_tuple_dict({
-            (operators.add, operators.sub, operators.mul,
-             operators.truediv, operators.mod): {
+    def visit_BIGINT(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.add: {
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                DECIMAL: DECIMAL,
+                FLOAT:   FLOAT,
+                NUMBER:  NUMBER,
+                DATE:    DATE
+            },
+            (operators.sub, operators.mul, operators.truediv,
+             operators.mod): {
+                (CHAR, VARCHAR, BLOB): FLOAT,
                 DECIMAL: DECIMAL,
                 FLOAT:   FLOAT,
                 NUMBER:  NUMBER
             }
         })
 
-    def visit_DECIMAL(self, type_, **kw):
-        return self._flatten_tuple_dict({
-            (operators.add, operators.sub, operators.mul,
-             operators.truediv, operators.mod): {
+    def visit_DECIMAL(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.add: {
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                FLOAT:  FLOAT,
+                NUMBER: NUMBER,
+                DATE:   DATE
+            },
+            (operators.sub, operators.mul, operators.truediv,
+             operators.mod): {
+                (CHAR, VARCHAR, BLOB): FLOAT,
                 FLOAT:  FLOAT,
                 NUMBER: NUMBER
             }
         })
 
-    def visit_DATE(self, type_, **kw):
-        return self._flatten_tuple_dict({
-            (operators.add, operators.sub, operators.mul,
-             operators.truediv, operators.mod): {
-                DATE: INTEGER
+    def visit_DATE(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.add: {
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                DATE:  INTEGER,
+                FLOAT: FLOAT
+            },
+            operators.sub: {
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                DATE:  INTEGER,
+                FLOAT: FLOAT
+            },
+            (operators.mul, operators.truediv, operators.mod): {
+                (DATE, INTEGER, SMALLINT, BYTEINT): INTEGER,
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                (FLOAT, TIME): FLOAT,
+                BIGINT:  BIGINT,
+                DECIMAL: DECIMAL,
+                NUMBER:  NUMBER,
             }
         })
 
-    def visit_CHAR(self, type_, **kw):
-        return {
+    def visit_TIME(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            (operators.add, operators.mul, operators.truediv,
+             operators.mod): {
+                DATE: FLOAT
+            }
+        })
+
+    def visit_CHAR(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
             operators.concat_op: {
+                CHAR:    VARCHAR if hasattr(other, 'charset') and \
+                            ((type_.charset == 'unicode') !=
+                             (other.charset == 'unicode'))
+                         else CHAR,
                 VARCHAR: VARCHAR,
                 CLOB:    CLOB
-            }
-        }
-
-    def visit_VARCHAR(self, type_, **kw):
-        return {
-            operators.concat_op: {
-                CLOB: CLOB
-            }
-        }
-
-    def visit_BYTEINT(self, type_, **kw):
-        return self._flatten_tuple_dict({
+            },
             (operators.add, operators.sub, operators.mul,
              operators.truediv, operators.mod): {
-                INTEGER:  INTEGER,
-                SMALLINT: INTEGER,
+                (INTEGER, SMALLINT, BIGINT, BYTEINT, NUMBER, FLOAT, DECIMAL,
+                 DATE, CHAR, VARCHAR): FLOAT
+            }
+        })
+
+    def visit_VARCHAR(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.concat_op: {
+                CLOB: CLOB
+            },
+            (operators.add, operators.sub, operators.mul,
+             operators.truediv, operators.mod): {
+                (INTEGER, SMALLINT, BIGINT, BYTEINT, NUMBER, FLOAT, DECIMAL,
+                 DATE, CHAR, VARCHAR): FLOAT
+            }
+        })
+
+    def visit_BYTEINT(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            (operators.add, operators.sub): {
+                (INTEGER, SMALLINT, BYTEINT): INTEGER,
+                (CHAR, VARCHAR, BLOB): FLOAT,
                 BIGINT:   BIGINT,
                 DECIMAL:  DECIMAL,
                 FLOAT:    FLOAT,
                 NUMBER:   NUMBER,
-                BYTEINT:  INTEGER
+                DATE:     DATE
+            },
+            (operators.mul, operators.truediv, operators.mod): {
+                (INTEGER, SMALLINT, BYTEINT, DATE): INTEGER,
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                BIGINT:   BIGINT,
+                DECIMAL:  DECIMAL,
+                FLOAT:    FLOAT,
+                NUMBER:   NUMBER
             }
         })
 
-    def visit_BYTE(self, type_, **kw):
+    def visit_BYTE(self, type_, other, **kw):
         return {
             operators.concat_op: {
                 VARBYTE: VARBYTE,
@@ -1148,17 +1410,23 @@ class TeradataExpressionAdapter:
             }
         }
 
-    def visit_VARBYTE(self, type_, **kw):
+    def visit_VARBYTE(self, type_, other, **kw):
         return {
             operators.concat_op: {
                 BLOB: BLOB
             }
         }
 
-    def visit_NUMBER(self, type_, **kw):
-        return self._flatten_tuple_dict({
-            (operators.add, operators.sub, operators.mul,
-             operators.truediv, operators.mod): {
+    def visit_NUMBER(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.add: {
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                FLOAT: FLOAT,
+                DATE:  DATE
+            },
+            (operators.sub, operators.mul, operators.truediv,
+             operators.mod): {
+                (CHAR, VARCHAR, BLOB): FLOAT,
                 FLOAT: FLOAT
             }
         })
