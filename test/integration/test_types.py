@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from sqlalchemy import Table, Column, MetaData
 from sqlalchemy import testing
 from teradata import datatypes as td_dtypes
@@ -319,7 +320,7 @@ class TestTypesGeneral(testing.fixtures.TestBase):
 
         parsed_attrs = utils.parse_show_table_col_attrs(
             self.conn.execute(
-                'SHOW TABLE table_test_types_sqlalch').fetchone().items()[0][1],
+                'SHOW TABLE table_test_types_sqlalch').fetchone()[0],
             tuple(col.name for col in cols))
 
         for col, attr in parsed_attrs.items():
@@ -444,7 +445,7 @@ class TestTypesGeneral(testing.fixtures.TestBase):
 
         parsed_attrs = utils.parse_show_table_col_attrs(
             self.conn.execute(
-                'SHOW TABLE table_test_types_rawsql').fetchone().items()[0][1],
+                'SHOW TABLE table_test_types_rawsql').fetchone()[0],
             tuple('column_' + str(i) for i in range(len(self.rawsql_types))))
 
         for col, attr in parsed_attrs.items():
@@ -510,11 +511,11 @@ class TestTypesDetailed(testing.fixtures.TestBase):
             the column.
         """
 
-        col_types = {
-            'column_0': sqlalch_td.BYTE(length=10),
-            'column_1': sqlalch_td.VARBYTE(length=100),
-            'column_2': sqlalch_td.BLOB(length=1, multiplier='K')
-        }
+        col_types = OrderedDict([
+            ('column_0', sqlalch_td.BYTE(length=10)),
+            ('column_1', sqlalch_td.VARBYTE(length=100)),
+            ('column_2', sqlalch_td.BLOB(length=1, multiplier='K'))
+        ])
 
         # Create the test table with the above Binary types
         cols  = [Column(name, type) for name, type in col_types.items()]
@@ -578,16 +579,16 @@ class TestTypesDetailed(testing.fixtures.TestBase):
         instantiated with.
         """
 
-        col_types = {
-            'column_0': sqlalch_td.INTEGER(),
-            'column_1': sqlalch_td.BIGINT(),
-            'column_2': sqlalch_td.SMALLINT(),
-            'column_3': sqlalch_td.BYTEINT(),
-            'column_5': sqlalch_td.FLOAT(),
-            'column_4': sqlalch_td.DECIMAL(precision=10, scale=5),
-            'column_6': sqlalch_td.NUMBER(precision=38, scale=20),
-            # 'column_7': sqlalch_td.NUMBER() TODO issue with -128 prec and scale
-        }
+        col_types = OrderedDict([
+            ('column_0', sqlalch_td.INTEGER()),
+            ('column_1', sqlalch_td.BIGINT()),
+            ('column_2', sqlalch_td.SMALLINT()),
+            ('column_3', sqlalch_td.BYTEINT()),
+            ('column_5', sqlalch_td.FLOAT()),
+            ('column_4', sqlalch_td.DECIMAL(precision=10, scale=5)),
+            ('column_6', sqlalch_td.NUMBER(precision=38, scale=20)),
+            # ('column_7', sqlalch_td.NUMBER() TODO issue with -128 prec and scale)
+        ])
 
         # Create the test table with the above Numeric types
         cols  = [Column(name, type) for name, type in col_types.items()]
@@ -614,11 +615,11 @@ class TestTypesDetailed(testing.fixtures.TestBase):
         were instantiated with.
         """
 
-        col_types = {
-            'column_0': sqlalch_td.DATE(),
-            'column_1': sqlalch_td.TIME(precision=5, timezone=True),
-            'column_2': sqlalch_td.TIMESTAMP(precision=4, timezone=True)
-        }
+        col_types = OrderedDict([
+            ('column_0', sqlalch_td.DATE()),
+            ('column_1', sqlalch_td.TIME(precision=5, timezone=True)),
+            ('column_2', sqlalch_td.TIMESTAMP(precision=4, timezone=True))
+        ])
 
         # Create the test table with the above Datetime types
         cols  = [Column(name, type) for name, type in col_types.items()]
@@ -649,21 +650,21 @@ class TestTypesDetailed(testing.fixtures.TestBase):
             back and checked against its expected string representation.
         """
 
-        col_types = {
-            'column_0':  sqlalch_td.INTERVAL_YEAR(precision=3),
-            'column_1':  sqlalch_td.INTERVAL_YEAR_TO_MONTH(precision=3),
-            'column_2':  sqlalch_td.INTERVAL_MONTH(precision=3),
-            'column_3':  sqlalch_td.INTERVAL_DAY(precision=3),
-            'column_4':  sqlalch_td.INTERVAL_DAY_TO_HOUR(precision=3),
-            'column_5':  sqlalch_td.INTERVAL_DAY_TO_MINUTE(precision=3),
-            'column_6':  sqlalch_td.INTERVAL_DAY_TO_SECOND(precision=3, frac_precision=5),
-            'column_7':  sqlalch_td.INTERVAL_HOUR(precision=3),
-            'column_8':  sqlalch_td.INTERVAL_HOUR_TO_MINUTE(precision=3),
-            'column_9':  sqlalch_td.INTERVAL_HOUR_TO_SECOND(precision=3, frac_precision=5),
-            'column_10': sqlalch_td.INTERVAL_MINUTE(precision=3),
-            'column_11': sqlalch_td.INTERVAL_MINUTE_TO_SECOND(precision=3, frac_precision=5),
-            'column_12': sqlalch_td.INTERVAL_SECOND(precision=3, frac_precision=5)
-        }
+        col_types = OrderedDict([
+            ('column_0',  sqlalch_td.INTERVAL_YEAR(precision=3)),
+            ('column_1',  sqlalch_td.INTERVAL_YEAR_TO_MONTH(precision=3)),
+            ('column_2',  sqlalch_td.INTERVAL_MONTH(precision=3)),
+            ('column_3',  sqlalch_td.INTERVAL_DAY(precision=3)),
+            ('column_4',  sqlalch_td.INTERVAL_DAY_TO_HOUR(precision=3)),
+            ('column_5',  sqlalch_td.INTERVAL_DAY_TO_MINUTE(precision=3)),
+            ('column_6',  sqlalch_td.INTERVAL_DAY_TO_SECOND(precision=3, frac_precision=5)),
+            ('column_7',  sqlalch_td.INTERVAL_HOUR(precision=3)),
+            ('column_8',  sqlalch_td.INTERVAL_HOUR_TO_MINUTE(precision=3)),
+            ('column_9',  sqlalch_td.INTERVAL_HOUR_TO_SECOND(precision=3, frac_precision=5)),
+            ('column_10', sqlalch_td.INTERVAL_MINUTE(precision=3)),
+            ('column_11', sqlalch_td.INTERVAL_MINUTE_TO_SECOND(precision=3, frac_precision=5)),
+            ('column_12', sqlalch_td.INTERVAL_SECOND(precision=3, frac_precision=5))
+        ])
 
         # Create the test table with the above Interval types
         # Note the copy() is here because otherwise after table creation, the type
@@ -751,20 +752,20 @@ class TestTypesDetailed(testing.fixtures.TestBase):
         instantiated with.
         """
 
-        col_types = {
-            'column_0':  sqlalch_td.CHAR(length=1, charset='LATIN'),
-            'column_1':  sqlalch_td.CHAR(length=2, charset='UNICODE'),
-            'column_2':  sqlalch_td.CHAR(length=3, charset='KANJISJIS'),
-            'column_3':  sqlalch_td.CHAR(length=4, charset='GRAPHIC'),
-            'column_4':  sqlalch_td.VARCHAR(length=1, charset='LATIN'),
-            'column_5':  sqlalch_td.VARCHAR(length=2, charset='UNICODE'),
-            'column_6':  sqlalch_td.VARCHAR(length=3, charset='KANJISJIS'),
-            'column_7':  sqlalch_td.VARCHAR(length=4, charset='GRAPHIC'),
-            'column_8':  sqlalch_td.VARCHAR(charset='LATIN'),
-            'column_9':  sqlalch_td.VARCHAR(charset='UNICODE'),
-            'column_10': sqlalch_td.VARCHAR(charset='KANJISJIS'),
-            'column_11': sqlalch_td.VARCHAR(charset='GRAPHIC')
-        }
+        col_types = OrderedDict([
+            ('column_0',  sqlalch_td.CHAR(length=1, charset='LATIN')),
+            ('column_1',  sqlalch_td.CHAR(length=2, charset='UNICODE')),
+            ('column_2',  sqlalch_td.CHAR(length=3, charset='KANJISJIS')),
+            ('column_3',  sqlalch_td.CHAR(length=4, charset='GRAPHIC')),
+            ('column_4',  sqlalch_td.VARCHAR(length=1, charset='LATIN')),
+            ('column_5',  sqlalch_td.VARCHAR(length=2, charset='UNICODE')),
+            ('column_6',  sqlalch_td.VARCHAR(length=3, charset='KANJISJIS')),
+            ('column_7',  sqlalch_td.VARCHAR(length=4, charset='GRAPHIC')),
+            ('column_8',  sqlalch_td.VARCHAR(charset='LATIN')),
+            ('column_9',  sqlalch_td.VARCHAR(charset='UNICODE')),
+            ('column_10', sqlalch_td.VARCHAR(charset='KANJISJIS')),
+            ('column_11', sqlalch_td.VARCHAR(charset='GRAPHIC'))
+        ])
 
         # Create the test table with the above Character types
         cols  = [Column(name, type) for name, type in col_types.items()]
@@ -813,25 +814,25 @@ class TestTypesDetailed(testing.fixtures.TestBase):
             back and checked against its expected string representation.
         """
 
-        col_types = {
-            'column_0': sqlalch_td.INTEGER(),
-            'column_1': sqlalch_td.PERIOD_DATE(
-                            format='yyyy-mm-dd'),
-            'column_2': sqlalch_td.PERIOD_TIMESTAMP(
+        col_types = OrderedDict([
+            ('column_0', sqlalch_td.INTEGER()),
+            ('column_1', sqlalch_td.PERIOD_DATE(
+                            format='yyyy-mm-dd')),
+            ('column_2', sqlalch_td.PERIOD_TIMESTAMP(
                             frac_precision=5,
-                            format='YYYY-MM-DDBHH:MI:SS.S(5)'),
-            'column_3': sqlalch_td.PERIOD_TIME(
+                            format='YYYY-MM-DDBHH:MI:SS.S(5)')),
+            ('column_3', sqlalch_td.PERIOD_TIME(
                             frac_precision=4,
-                            format='HH:MI:SS.S(4)'),
-            'column_4': sqlalch_td.PERIOD_TIMESTAMP(
+                            format='HH:MI:SS.S(4)')),
+            ('column_4', sqlalch_td.PERIOD_TIMESTAMP(
                             frac_precision=6,
                             timezone=True,
-                            format='YYYY-MM-DDBHH:MI:SS.S(6)Z'),
-            'column_5': sqlalch_td.PERIOD_TIME(
+                            format='YYYY-MM-DDBHH:MI:SS.S(6)Z')),
+            ('column_5', sqlalch_td.PERIOD_TIME(
                             frac_precision=6,
                             timezone=True,
-                            format='HH:MI:SS.S(6)Z')
-        }
+                            format='HH:MI:SS.S(6)Z'))
+        ])
 
         # Create the test table with the above Period types
         cols  = [Column(name, type) for name, type in col_types.items()]
