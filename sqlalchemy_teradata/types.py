@@ -159,6 +159,7 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
     def __init__(self, precision = 38, scale = 19, **kwargs):
 
         """ Construct a DECIMAL Object """
+
         super(DECIMAL, self).__init__(precision = precision, scale = scale, **kwargs)
 
     def literal_processor(self, dialect):
@@ -254,18 +255,15 @@ class BYTE(_TDBinary, sqltypes.BINARY):
     def literal_processor(self, dialect):
 
         def process(value):
-
             try:
-
-              # Python 3.5+
-              return "'%s'XB" % value.hex()
+                # Python 3.5+
+                return "'%s'XB" % value.hex()
 
             except AttributeError:
 
-              # try it with codecs
-              import codecs
-              return "'%s'XB" % codecs.encode(value, 'hex').decode('utf-8')
-
+                # try it with codecs
+                import codecs
+                return "'%s'XB" % codecs.encode(value, 'hex').decode('utf-8')
         return process
 
 

@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from sqlalchemy import Table, Column
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy import sql
@@ -68,24 +69,24 @@ class TestCompileGeneric(fixtures.TestBase):
             two   = 2
             three = 3
 
-        col_types = {
-            'column_0':  sqltypes.BigInteger(),
-            'column_1':  sqltypes.Boolean(),
-            'column_2':  sqltypes.Date(),
-            'column_3':  sqltypes.DateTime(),
-            'column_4':  sqltypes.Enum(TestEnum),
-            'column_5':  sqltypes.Float(),
-            'column_6':  sqltypes.Integer(),
-            'column_7':  sqltypes.Interval(),
-            'column_8':  sqltypes.LargeBinary(),
-            'column_9':  sqltypes.Numeric(),
-            'column_10': sqltypes.SmallInteger(),
-            'column_11': sqltypes.String(),
-            'column_12': sqltypes.Text(),
-            'column_13': sqltypes.Time(),
-            'column_14': sqltypes.Unicode(),
-            'column_15': sqltypes.UnicodeText()
-        }
+        col_types = OrderedDict([
+            ('column_0',  sqltypes.BigInteger()),
+            ('column_1',  sqltypes.Boolean()),
+            ('column_2',  sqltypes.Date()),
+            ('column_3',  sqltypes.DateTime()),
+            ('column_4',  sqltypes.Enum(TestEnum)),
+            ('column_5',  sqltypes.Float()),
+            ('column_6',  sqltypes.Integer()),
+            ('column_7',  sqltypes.Interval()),
+            ('column_8',  sqltypes.LargeBinary()),
+            ('column_9',  sqltypes.Numeric()),
+            ('column_10', sqltypes.SmallInteger()),
+            ('column_11', sqltypes.String()),
+            ('column_12', sqltypes.Text()),
+            ('column_13', sqltypes.Time()),
+            ('column_14', sqltypes.Unicode()),
+            ('column_15', sqltypes.UnicodeText())
+        ])
 
         cols  = [Column(name, type) for name, type in col_types.items()]
         table = Table('table_test_types_generic', self.metadata, *cols)
