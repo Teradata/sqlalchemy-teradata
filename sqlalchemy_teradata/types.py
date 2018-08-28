@@ -1,5 +1,5 @@
 # sqlalchemy_teradata/types.py
-# Copyright (C) 2015-2016 by Teradata
+# Copyright (C) 2015-2019 by Teradata
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-teradata and is released under
