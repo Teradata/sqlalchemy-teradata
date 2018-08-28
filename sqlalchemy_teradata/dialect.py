@@ -1,5 +1,5 @@
 # sqlalchemy_teradata/dialect.py
-# Copyright (C) 2015-2016 by Teradata
+# Copyright (C) 2015-2019 by Teradata
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-teradata and is released under
@@ -81,7 +81,7 @@ class TeradataDialect(default.DefaultDialect):
 
     name = 'teradata'
     driver = 'teradata'
-    default_paramstyle = 'qmark'
+    paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
 
     statement_compiler = TeradataCompiler
@@ -97,6 +97,7 @@ class TeradataDialect(default.DefaultDialect):
     postfetch_lastrowid = False
     implicit_returning = False
     preexecute_autoincrement_sequences = False
+    case_sensitive = False
 
     construct_arguments = [
       (Table, {
@@ -146,7 +147,7 @@ class TeradataDialect(default.DefaultDialect):
 
         stmt = select([column('tablename')],
                       from_obj=[text('dbc.tablesvx')]).where(
-                        and_(text('DatabaseName=:schema'),
+                        and_(text('DatabaseName (NOT CASESPECIFIC) = CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                              text('TableName=:table_name')))
 
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchone()
@@ -210,7 +211,7 @@ class TeradataDialect(default.DefaultDialect):
 
             # Check if the object is a view
             stmt = select([column('tablekind')], from_obj=text('dbc.tablesV')).where(
-                        and_(text('DatabaseName=:schema'),
+                        and_(text('DatabaseName (NOT CASESPECIFIC) = CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                              text('TableName=:table_name'),
                              text("tablekind='V'")))
             res = connection.execute(stmt, schema=schema, table_name=table_name).rowcount
@@ -220,7 +221,7 @@ class TeradataDialect(default.DefaultDialect):
             dbc_columninfo = 'dbc.ColumnsQV'
 
         stmt = select(['*'], from_obj=text(dbc_columninfo)).where(
-            and_(text('DatabaseName=:schema'),
+            and_(text('DatabaseName (NOT CASESPECIFIC) = CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                  text('TableName=:table_name')))
 
         res = connection.execute(stmt, schema=schema, table_name=table_name).fetchall()
@@ -233,8 +234,9 @@ class TeradataDialect(default.DefaultDialect):
         return [self._get_column_info(row) for row in res]
 
     def _get_default_schema_name(self, connection):
-        return self.normalize_name(
-            connection.execute('select database').scalar())
+        res =  self.normalize_name(
+               connection.execute('select database').scalar())
+        return res
 
     def _get_column_help(self, connection, schema, table_name, column_name):
         stmt = 'help column ' + schema + '.' + table_name + '.' + column_name
@@ -260,7 +262,7 @@ class TeradataDialect(default.DefaultDialect):
 
         stmt = select([column('tablename')],
                       from_obj=[text('dbc.TablesVX')]).where(
-                      and_(text('DatabaseName = :schema'),
+                      and_(text('DatabaseName (NOT CASESPECIFIC)= CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                           or_(text('tablekind=\'T\''),
                               text('tablekind=\'O\''))))
         res = connection.execute(stmt, schema=schema).fetchall()
@@ -288,7 +290,7 @@ class TeradataDialect(default.DefaultDialect):
 
         stmt = select([column('tablename')],
                       from_obj=[text('dbc.TablesVX')]).where(
-                      and_(text('DatabaseName = :schema'),
+                      and_(text('DatabaseName (NOT CASESPECIFIC) = CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                            text('tablekind=\'V\'')))
 
         res = connection.execute(stmt, schema=schema).fetchall()
@@ -306,7 +308,7 @@ class TeradataDialect(default.DefaultDialect):
 
         stmt = select([column('ColumnName'), column('IndexName')],
                       from_obj=[text('dbc.Indices')]).where(
-                          and_(text('DatabaseName = :schema'),
+                          and_(text('DatabaseName (NOT CASESPECIFIC) = CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                               text('TableName=:table'),
                               text('IndexType=:indextype'))
                       ).order_by(asc(column('IndexNumber')))
@@ -334,7 +336,7 @@ class TeradataDialect(default.DefaultDialect):
             schema = self.default_schema_name
 
         stmt = select([column('ColumnName'), column('IndexName')], from_obj=[text('dbc.Indices')]) \
-            .where(and_(text('DatabaseName = :schema'),
+            .where(and_(text('DatabaseName (NOT CASESPECIFIC) = CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                         text('TableName=:table'),
                         text('IndexType=:indextype'))) \
             .order_by(asc(column('IndexName')))
@@ -413,7 +415,7 @@ class TeradataDialect(default.DefaultDialect):
             schema = self.default_schema_name
 
         stmt = select(["*"], from_obj=[text('dbc.Indices')]) \
-            .where(and_(text('DatabaseName = :schema'),
+            .where(and_(text('DatabaseName (NOT CASESPECIFIC) = CAST(:schema as VARCHAR(128)) (NOT CASESPECIFIC)'),
                         text('TableName=:table'))) \
             .order_by(asc(column('IndexName')))
 
@@ -473,3 +475,5 @@ class TeradataDialect(default.DefaultDialect):
         return self.get_transaction_mode(connection) == 'T'
 
 dialect = TeradataDialect
+preparer = TeradataIdentifierPreparer
+compiler = TeradataCompiler

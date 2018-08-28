@@ -1,3 +1,10 @@
+# sqlalchemy_teradata/resolver.py
+# Copyright (C) 2015-2019 by Teradata
+# <see AUTHORS file>
+#
+# This module is part of sqlalchemy-teradata and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 class TeradataTypeResolver:
     """Type Resolver for Teradata Data Types.
 

@@ -1,5 +1,5 @@
 # sqlalchemy_teradata/types.py
-# Copyright (C) 2015-2016 by Teradata
+# Copyright (C) 2015-2019 by Teradata
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-teradata and is released under
@@ -156,10 +156,11 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
 
     """
 
-    def __init__(self, precision = 5, scale = 0, **kwargs):
+    def __init__(self, precision = 38, scale = 19, **kwargs):
 
         """ Construct a DECIMAL Object """
-        super(DECIMAL, self).__init__(**kwargs)
+
+        super(DECIMAL, self).__init__(precision = precision, scale = scale, **kwargs)
 
     def literal_processor(self, dialect):
 
@@ -254,7 +255,15 @@ class BYTE(_TDBinary, sqltypes.BINARY):
     def literal_processor(self, dialect):
 
         def process(value):
-            return "'%s'XB" % value.hex()
+            try:
+                # Python 3.5+
+                return "'%s'XB" % value.hex()
+
+            except AttributeError:
+
+                # try it with codecs
+                import codecs
+                return "'%s'XB" % codecs.encode(value, 'hex').decode('utf-8')
         return process
 
 

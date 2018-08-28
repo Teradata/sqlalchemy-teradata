@@ -1,5 +1,5 @@
 # sqlalchemy_teradata/base.py
-# Copyright (C) 2015-2016 by Teradata
+# Copyright (C) 2015-2019 by Teradata
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-teradata and is released under
@@ -22,7 +22,6 @@ AUTOCOMMIT_REGEXP = re.compile(
             r'\s*(?:UPDATE|INSERT|CREATE|DELETE|DROP|ALTER|MERGE)',
                 re.I | re.UNICODE)
 
-#TODO: Read this from the dbc.restrictedwordsv view
 ReservedWords = restricted_words
 
 class TeradataExecutionContext(default.DefaultExecutionContext):

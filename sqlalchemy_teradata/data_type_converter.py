@@ -1,3 +1,10 @@
+# sqlalchemy_teradata/data_type_converter.py
+# Copyright (C) 2015-2019 by Teradata
+# <see AUTHORS file>
+#
+# This module is part of sqlalchemy-teradata and is released under
+# the MIT License: http://www.opensource.org/licenses/mit-license.php
+
 from teradata.datatypes import DefaultDataTypeConverter
 
 class TDDataTypeConverter(DefaultDataTypeConverter):
