@@ -82,6 +82,7 @@ class TeradataDialect(default.DefaultDialect):
     name = 'teradata'
     driver = 'teradata'
     paramstyle = 'qmark'
+    default_paramstyle = 'qmark'
     poolclass = pool.SingletonThreadPool
 
     statement_compiler = TeradataCompiler
