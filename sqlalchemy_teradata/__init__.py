@@ -1,5 +1,5 @@
 # sqlalchemy_teradata/__init__.py
-# Copyright (C) 2015-2016 by Teradata
+# Copyright (C) 2015-2019 by Teradata
 # <see AUTHORS file>
 #
 # This module is part of sqlalchemy-teradata and is released under
@@ -14,7 +14,7 @@ from .types import (INTEGER, SMALLINT, BIGINT, DECIMAL, DATE, TIME,
                     INTERVAL_MINUTE, INTERVAL_MINUTE_TO_SECOND, INTERVAL_SECOND,
                     PERIOD_DATE, PERIOD_TIME, PERIOD_TIMESTAMP)
 
-__version__ = '0.1.0'
+__version__ = '0.5.0'
 
 __all__ = ('INTEGER', 'SMALLINT', 'BIGINT', 'DECIMAL', 'FLOAT', 'DATE', 'TIME',
            'TIMESTAMP', 'CHAR', 'VARCHAR', 'CLOB', 'NUMBER', 'BYTEINT', 'BYTE',

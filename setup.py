@@ -3,15 +3,13 @@ from setuptools import setup
 
 setup(
     name='sqlalchemy_teradata',
-    version='0.1.0',
+    version='0.5.0',
     description="Teradata dialect for SQLAlchemy",
     classifiers=[
-                      'Development Status :: 3 - Alpha',
                       'Environment :: Console',
                       'Intended Audience :: Developers',
                       'Programming Language :: Python',
                       'Programming Language :: Python :: 2.7',
-                      'Programming Language :: Python :: Implementation :: CPython',
                       'Topic :: Database :: Front-Ends',
                 ],
     keywords='Teradata SQLAlchemy',
