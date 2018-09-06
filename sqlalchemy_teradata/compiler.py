@@ -26,22 +26,22 @@ class TeradataCompiler(compiler.SQLCompiler):
               ROW_NUMBER OVER(ORDER BY) subquery.
         """
 
-        pre = select._distinct and "DISTINCT " or ""
+        pre = select._distinct and 'DISTINCT ' or ''
 
         # TODO: Decide whether we can replace this with the recipe.
         if select._limit is not None and select._offset is None:
-            pre += "TOP %d " % (select._limit)
+            pre += 'TOP {} '.format(select._limit)
 
         return pre
 
     def visit_mod_binary(self, binary, operator, **kw):
         return (self.process(binary.left, **kw)
-                + " MOD "
+                + ' MOD '
                 + self.process(binary.right, **kw))
 
     def visit_ne_binary(self, binary, operator, **kw):
         return (self.process(binary.left, **kw)
-                + " <> "
+                + ' <> '
                 + self.process(binary.right, **kw))
 
     def limit_clause(self, select, **kwargs):
@@ -107,7 +107,6 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
         return ''
 
     def post_create_table(self, table):
-
         """This hook processes the TDPostCreateTableOpts given by the
         teradata_post_create dialect kwarg for Table.
 
@@ -148,12 +147,12 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
 
         colspec = '{} {}'.format(self.preparer.format_column(column),
                                  self.dialect.type_compiler.process(
-                                    column.type, type_expression=column))
+                                     column.type, type_expression=column))
 
         # Null/NotNull
         if column.nullable is not None:
             if not column.nullable or column.primary_key:
-                colspec += " NOT NULL"
+                colspec += ' NOT NULL'
 
         return colspec
 
@@ -187,6 +186,7 @@ class TeradataOptions(object):
         if isinstance(val[-1], dict):
             # Process syntax elements (dict) after cols
             res += ' '.join(val[-1]['post'])
+
         return res
 
 
@@ -407,7 +407,7 @@ class TDCreateTablePost(TeradataOptions):
                if all_but
                else 'partition by( column')
         c = self._visit_partition_by(cols, rows)
-        c += [{'post': ((['add %s' % str(const)]
+        c += [{'post': ((['add {}'.format(str(const))]
                          if const is not None
                          else [])
                         + [')'])}]
@@ -415,7 +415,6 @@ class TDCreateTablePost(TeradataOptions):
         return self.__class__(self._append(self.opts, {res: c}))
 
     def _visit_partition_by(self, cols, rows):
-
         if cols:
             c = ['column('+ k +') auto compress '
                  for k, v in cols.items() if v is True]
@@ -449,7 +448,6 @@ class TDCreateTablePost(TeradataOptions):
 
     def partition_by_col_no_auto_compress(self, all_but=False, cols={},
                                           rows={}, const=None):
-
         res = ('partition by( column no auto compress all but'
                if all_but
                else 'partition by( column no auto compression')

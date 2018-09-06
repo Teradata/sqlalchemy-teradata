@@ -73,7 +73,7 @@ ischema_names = {
 stringtypes = [t for t in ischema_names
                if issubclass(ischema_names[t], sqltypes.String)]
 
-               
+
 class TeradataDialect(default.DefaultDialect):
 
     name = 'teradata'

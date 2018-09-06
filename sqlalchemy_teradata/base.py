@@ -41,9 +41,12 @@ class TeradataIdentifierPreparer(compiler.IdentifierPreparer):
             dialect, initial_quote, final_quote, escape_quote, omit_schema)
 
 
-# Views Recipe from:
-# https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/Views
 class CreateView(DDLElement):
+
+    """SQL expression element for creating Views.
+
+    Recipe from: https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/Views
+    """
 
     def __init__(self, name, selectable):
         self.name = name
@@ -57,6 +60,8 @@ def visit_create_view(element, compiler, **kw):
 
 
 class DropView(DDLElement):
+
+    """SQL expression element for dropping Views."""
 
     def __init__(self, name):
         self.name = name
