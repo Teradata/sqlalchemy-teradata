@@ -30,10 +30,13 @@ class TeradataTypeResolver:
 
         return getattr(self, 'visit_' + type_.__visit_name__)(type_, **kw)
 
-    def visit_INTEGER(self, type_, **kw):
+    def visit_BYTEINT(self, type_, **kw):
         return type_()
 
     def visit_SMALLINT(self, type_, **kw):
+        return type_()
+
+    def visit_INTEGER(self, type_, **kw):
         return type_()
 
     def visit_BIGINT(self, type_, **kw):
@@ -42,8 +45,22 @@ class TeradataTypeResolver:
     def visit_DECIMAL(self, type_, **kw):
         return type_(precision=kw['prec'], scale=kw['scale'])
 
+    def visit_FLOAT(self, type_, **kw):
+        return type_()
+
+    def visit_NUMBER(self, type_, **kw):
+        return type_(precision=kw['prec'], scale=kw['scale'])
+
     def visit_DATE(self, type_, **kw):
         return type_()
+
+    def visit_TIME(self, type_, **kw):
+        tz = kw['typecode'] == 'TZ'
+        return type_(precision=kw['scale'], timezone=tz)
+
+    def visit_TIMESTAMP(self, type_, **kw):
+        tz = kw['typecode'] == 'SZ'
+        return type_(precision=kw['scale'], timezone=tz)
 
     def _resolve_type_interval(self, type_, **kw):
         return type_(precision=kw['prec'], frac_precision=kw['scale'])
@@ -98,14 +115,6 @@ class TeradataTypeResolver:
         tz = kw['typecode'] == 'PM'
         return type_(format=kw['fmt'], frac_precision=kw['scale'], timezone=tz)
 
-    def visit_TIME(self, type_, **kw):
-        tz = kw['typecode'] == 'TZ'
-        return type_(precision=kw['scale'], timezone=tz)
-
-    def visit_TIMESTAMP(self, type_, **kw):
-        tz = kw['typecode'] == 'SZ'
-        return type_(precision=kw['scale'], timezone=tz)
-
     def _resolve_type_string(self, type_, **kw):
         return type_(
             length=(int(kw['length'] / 2)
@@ -123,12 +132,6 @@ class TeradataTypeResolver:
     def visit_CLOB(self, type_, **kw):
         return self._resolve_type_string(type_, **kw)
 
-    def visit_BYTEINT(self, type_, **kw):
-        return type_()
-
-    def visit_FLOAT(self, type_, **kw):
-        return type_()
-
     def _resolve_type_binary(self, type_, **kw):
         return type_(length=kw['length'])
 
@@ -141,6 +144,3 @@ class TeradataTypeResolver:
     def visit_BLOB(self, type_, **kw):
         # TODO: Multiplier of BLOB currently not recovered when reflected
         return self._resolve_type_binary(type_, **kw)
-
-    def visit_NUMBER(self, type_, **kw):
-        return type_(precision=kw['prec'], scale=kw['scale'])

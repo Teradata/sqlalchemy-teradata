@@ -22,30 +22,20 @@ import sqlalchemy_teradata.types as tdtypes
 # Used for reflecting columns (see get_columns in the dialect)
 ischema_names = {
     # Numeric types
-    'I' : tdtypes.INTEGER,
-    'I2': tdtypes.SMALLINT,
-    'I8': tdtypes.BIGINT,
     'I1': tdtypes.BYTEINT,
-    'F' : tdtypes.FLOAT,
+    'I2': tdtypes.SMALLINT,
+    'I' : tdtypes.INTEGER,
+    'I8': tdtypes.BIGINT,
     'D' : tdtypes.DECIMAL,
+    'F' : tdtypes.FLOAT,
     'N' : tdtypes.NUMBER,
-
-    # Character types
-    'CF': tdtypes.CHAR,
-    'CV': tdtypes.VARCHAR,
-    'CO': tdtypes.CLOB,
 
     # Datetime types
     'DA': tdtypes.DATE,
-    'TS': tdtypes.TIMESTAMP,
-    'SZ': tdtypes.TIMESTAMP,  # Timestamp with timezone
     'AT': tdtypes.TIME,
     'TZ': tdtypes.TIME,       # Time with timezone
-
-    # Binary types
-    'BF': tdtypes.BYTE,
-    'BV': tdtypes.VARBYTE,
-    'BO': tdtypes.BLOB,
+    'TS': tdtypes.TIMESTAMP,
+    'SZ': tdtypes.TIMESTAMP,  # Timestamp with timezone
 
     # Interval types
     'DH': tdtypes.INTERVAL_DAY_TO_HOUR,
@@ -68,6 +58,16 @@ ischema_names = {
     'PM': tdtypes.PERIOD_TIMESTAMP,  # Timestamp with timezone
     'PT': tdtypes.PERIOD_TIME,
     'PZ': tdtypes.PERIOD_TIME,       # Time with timezone
+
+    # Character types
+    'CF': tdtypes.CHAR,
+    'CV': tdtypes.VARCHAR,
+    'CO': tdtypes.CLOB,
+
+    # Binary types
+    'BF': tdtypes.BYTE,
+    'BV': tdtypes.VARBYTE,
+    'BO': tdtypes.BLOB,
 }
 
 stringtypes = [t for t in ischema_names

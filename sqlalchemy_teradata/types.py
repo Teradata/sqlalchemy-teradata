@@ -107,17 +107,18 @@ class _TDType(_TDLiteralCoercer, _TDComparable):
         return self._parse_name(self.__class__.__name__)
 
 
-class INTEGER(_TDType, sqltypes.INTEGER):
-    """Teradata INTEGER type.
+class BYTEINT(_TDType, sqltypes.Integer):
+    """Teradata BYTEINT type.
 
-    Represents a signed, binary integer value from -2,147,483,648 to
-    2,147,483,647.
+    This type represents a one byte signed integer.
     """
 
-    def __init__(self, **kwargs):
-        """Construct an INTEGER Object."""
+    __visit_name__ = 'BYTEINT'
 
-        super(INTEGER, self).__init__(**kwargs)
+    def __init__(self, **kwargs):
+        """Construct a BYTEINT Object."""
+
+        super(BYTEINT, self).__init__(**kwargs)
 
 
 class SMALLINT(_TDType, sqltypes.SMALLINT):
@@ -130,6 +131,19 @@ class SMALLINT(_TDType, sqltypes.SMALLINT):
         """Construct a SMALLINT Object."""
 
         super(SMALLINT, self).__init__(**kwargs)
+
+
+class INTEGER(_TDType, sqltypes.INTEGER):
+    """Teradata INTEGER type.
+
+    Represents a signed, binary integer value from -2,147,483,648 to
+    2,147,483,647.
+    """
+
+    def __init__(self, **kwargs):
+        """Construct an INTEGER Object."""
+
+        super(INTEGER, self).__init__(**kwargs)
 
 
 class BIGINT(_TDType, sqltypes.BIGINT):
@@ -163,156 +177,6 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
             return str(value) + ('' if value.as_tuple()[2] < 0 else '.')
 
         return process
-
-
-class BYTEINT(_TDType, sqltypes.Integer):
-    """Teradata BYTEINT type.
-
-    This type represents a one byte signed integer.
-    """
-
-    __visit_name__ = 'BYTEINT'
-
-    def __init__(self, **kwargs):
-        """Construct a BYTEINT Object."""
-
-        super(BYTEINT, self).__init__(**kwargs)
-
-
-class _TDBinary(_TDConcatenable, _TDType, sqltypes._Binary):
-    """Teradata Binary Types.
-
-    This type represents a Teradata binary string. Warns users when
-    data may get truncated upon insertion.
-    """
-
-    class TruncationWarning(UserWarning):
-        pass
-
-    def _length(self):
-        """Compute the length allocated to this binary column."""
-
-        multiplier_map = {
-            'K': 1024,
-            'M': 1048576,
-            'G': 1073741824,
-        }
-        if hasattr(self, 'multiplier') and self.multiplier in multiplier_map:
-            return self.length * multiplier_map[self.multiplier]
-
-        return self.length
-
-    def bind_processor(self, dialect):
-        if dialect.dbapi is None:
-            return None
-
-        DBAPIBinary = dialect.dbapi.Binary
-
-        def process(value):
-            bin_length = self._length()
-
-            if value is not None and bin_length is not None:
-                value = DBAPIBinary(value)
-                if len(value) > bin_length:
-                    warnings.warn(
-                        'Attempting to insert an item that is larger than the '
-                        'space allocated for this column. Data may get '
-                        'truncated.',
-                        self.TruncationWarning)
-                return value
-
-            return None
-
-        return process
-
-
-class BYTE(_TDBinary, sqltypes.BINARY):
-    """Teradata BYTE type.
-
-    This type represents a fixed-length binary string and is equivalent to
-    the BINARY SQL standard type.
-    """
-
-    __visit_name__ = 'BYTE'
-
-    def __init__(self, length=None, **kwargs):
-        """Construct a BYTE object.
-
-        Args:
-            length (int): Optional 1 to n. Specifies the number of bytes in the
-                fixed-length binary string. The maximum value for n is 64000.
-        """
-
-        super(BYTE, self).__init__(length=length, **kwargs)
-
-    def literal_processor(self, dialect):
-        def process(value):
-            try:
-                # Python 3.5+
-                return "'{}'XB".format(value.hex())
-
-            except AttributeError:
-                # Try it with codecs
-                import codecs
-                return "'{}'XB".format(
-                    codecs.encode(value, 'hex').decode('utf-8'))
-
-        return process
-
-
-class VARBYTE(_TDBinary, sqltypes.VARBINARY):
-    """Teradata VARBYTE type.
-
-    This type represents a variable-length binary string and is equivalent to
-    the VARBINARY SQL standard type.
-    """
-
-    __visit_name__ = 'VARBYTE'
-
-    def __init__(self, length=None, **kwargs):
-        """Construct a VARBYTE object.
-
-        Args:
-            length (int): Optional 1 to n. Specifies the number of bytes in the
-                fixed-length binary string. The maximum value for n is 64000.
-        """
-
-        super(VARBYTE, self).__init__(length=length, **kwargs)
-
-
-class BLOB(_TDBinary, sqltypes.BLOB):
-    """Teradata BLOB type.
-
-    This type represents a large binary string of raw bytes. A binary large
-    object (BLOB) column can store binary objects, such as graphics, video
-    clips, files, and documents.
-    """
-
-    def __init__(self, length=None, multiplier=None, **kwargs):
-        """Construct a BLOB object.
-
-        Args:
-            length (int): Optional 1 to n. Specifies the number of bytes
-                allocated for the BLOB column. The maximum number of bytes is
-                2097088000, which is the default if n is not specified.
-            multiplier (str): Optional value in ('K', 'M', 'G'). Indicates that
-                the length parameter n is specified in kilobytes (KB),
-                megabytes (Mb), or gigabytes (GB) respectively. Note the
-                following constraints on n hold for each of the allowable
-                multiplier:
-                    'K' is specified, n cannot exceed 2047937.
-                    'M' is specified, n cannot exceed 1999.
-                    'G' is specified, n must be 1.
-                If multiplier is None, the length is interepreted as bytes (B).
-
-        Note: If you specify a multiplier without specifying the length, the
-              multiplier argument will simply get ignored. On the other hand,
-              specifying a length without a multiplier will implicitly indicate
-              that the length value should be interpreted as bytes (B).
-        """
-
-        super(BLOB, self).__init__(length=length, **kwargs)
-        self.multiplier = multiplier
 
 
 class FLOAT(_TDType, sqltypes.FLOAT):
@@ -1012,6 +876,142 @@ class CLOB(_TDConcatenable, _TDType, sqltypes.CLOB):
         self.multiplier = multiplier
 
 
+class _TDBinary(_TDConcatenable, _TDType, sqltypes._Binary):
+    """Teradata Binary Types.
+
+    This type represents a Teradata binary string. Warns users when
+    data may get truncated upon insertion.
+    """
+
+    class TruncationWarning(UserWarning):
+        pass
+
+    def _length(self):
+        """Compute the length allocated to this binary column."""
+
+        multiplier_map = {
+            'K': 1024,
+            'M': 1048576,
+            'G': 1073741824,
+        }
+        if hasattr(self, 'multiplier') and self.multiplier in multiplier_map:
+            return self.length * multiplier_map[self.multiplier]
+
+        return self.length
+
+    def bind_processor(self, dialect):
+        if dialect.dbapi is None:
+            return None
+
+        DBAPIBinary = dialect.dbapi.Binary
+
+        def process(value):
+            bin_length = self._length()
+
+            if value is not None and bin_length is not None:
+                value = DBAPIBinary(value)
+                if len(value) > bin_length:
+                    warnings.warn(
+                        'Attempting to insert an item that is larger than the '
+                        'space allocated for this column. Data may get '
+                        'truncated.',
+                        self.TruncationWarning)
+                return value
+
+            return None
+
+        return process
+
+
+class BYTE(_TDBinary, sqltypes.BINARY):
+    """Teradata BYTE type.
+
+    This type represents a fixed-length binary string and is equivalent to
+    the BINARY SQL standard type.
+    """
+
+    __visit_name__ = 'BYTE'
+
+    def __init__(self, length=None, **kwargs):
+        """Construct a BYTE object.
+
+        Args:
+            length (int): Optional 1 to n. Specifies the number of bytes in the
+                fixed-length binary string. The maximum value for n is 64000.
+        """
+
+        super(BYTE, self).__init__(length=length, **kwargs)
+
+    def literal_processor(self, dialect):
+        def process(value):
+            try:
+                # Python 3.5+
+                return "'{}'XB".format(value.hex())
+
+            except AttributeError:
+                # Try it with codecs
+                import codecs
+                return "'{}'XB".format(
+                    codecs.encode(value, 'hex').decode('utf-8'))
+
+        return process
+
+
+class VARBYTE(_TDBinary, sqltypes.VARBINARY):
+    """Teradata VARBYTE type.
+
+    This type represents a variable-length binary string and is equivalent to
+    the VARBINARY SQL standard type.
+    """
+
+    __visit_name__ = 'VARBYTE'
+
+    def __init__(self, length=None, **kwargs):
+        """Construct a VARBYTE object.
+
+        Args:
+            length (int): Optional 1 to n. Specifies the number of bytes in the
+                fixed-length binary string. The maximum value for n is 64000.
+        """
+
+        super(VARBYTE, self).__init__(length=length, **kwargs)
+
+
+class BLOB(_TDBinary, sqltypes.BLOB):
+    """Teradata BLOB type.
+
+    This type represents a large binary string of raw bytes. A binary large
+    object (BLOB) column can store binary objects, such as graphics, video
+    clips, files, and documents.
+    """
+
+    def __init__(self, length=None, multiplier=None, **kwargs):
+        """Construct a BLOB object.
+
+        Args:
+            length (int): Optional 1 to n. Specifies the number of bytes
+                allocated for the BLOB column. The maximum number of bytes is
+                2097088000, which is the default if n is not specified.
+            multiplier (str): Optional value in ('K', 'M', 'G'). Indicates that
+                the length parameter n is specified in kilobytes (KB),
+                megabytes (Mb), or gigabytes (GB) respectively. Note the
+                following constraints on n hold for each of the allowable
+                multiplier:
+                    'K' is specified, n cannot exceed 2047937.
+                    'M' is specified, n cannot exceed 1999.
+                    'G' is specified, n must be 1.
+                If multiplier is None, the length is interepreted as bytes (B).
+
+        Note: If you specify a multiplier without specifying the length, the
+              multiplier argument will simply get ignored. On the other hand,
+              specifying a length without a multiplier will implicitly indicate
+              that the length value should be interpreted as bytes (B).
+        """
+
+        super(BLOB, self).__init__(length=length, **kwargs)
+        self.multiplier = multiplier
+
+
 class TeradataExpressionAdapter:
     """Expression Adapter for Teradata Data Types.
 
@@ -1179,7 +1179,7 @@ class _LookupStrategy(_AdaptStrategy):
                 DECIMAL: DECIMAL,
                 FLOAT: FLOAT,
                 NUMBER: NUMBER,
-                DATE: DATE
+                DATE: DATE,
             },
             (operators.sub, operators.mul, operators.truediv,
              operators.mod): {
@@ -1187,24 +1187,24 @@ class _LookupStrategy(_AdaptStrategy):
                  BIGINT: BIGINT,
                  DECIMAL: DECIMAL,
                  FLOAT: FLOAT,
-                 NUMBER: NUMBER
+                 NUMBER: NUMBER,
              }
         })
 
     def visit_SMALLINT(self, type_, other, **kw):
         return self._flatten_tuple_keyed_dict({
             operators.add: {
-                (INTEGER, SMALLINT, BYTEINT, DATE): INTEGER,
+                (BYTEINT, SMALLINT, INTEGER, DATE): INTEGER,
                 (CHAR, VARCHAR, BLOB): FLOAT,
                 BIGINT: BIGINT,
                 DECIMAL: DECIMAL,
                 FLOAT: FLOAT,
                 NUMBER: NUMBER,
-                DATE: DATE
+                DATE: DATE,
             },
             (operators.sub, operators.mul, operators.truediv,
              operators.mod): {
-                 (INTEGER, SMALLINT, BYTEINT, DATE): INTEGER,
+                 (BYTEINT, SMALLINT, INTEGER, DATE): INTEGER,
                  (CHAR, VARCHAR, BLOB): FLOAT,
                  BIGINT: BIGINT,
                  DECIMAL: DECIMAL,
@@ -1220,15 +1220,36 @@ class _LookupStrategy(_AdaptStrategy):
                 DECIMAL: DECIMAL,
                 FLOAT: FLOAT,
                 NUMBER: NUMBER,
-                DATE: DATE
+                DATE: DATE,
             },
             (operators.sub, operators.mul, operators.truediv,
              operators.mod): {
                  (CHAR, VARCHAR, BLOB): FLOAT,
                  DECIMAL: DECIMAL,
                  FLOAT: FLOAT,
-                 NUMBER: NUMBER
+                 NUMBER: NUMBER,
              }
+        })
+
+    def visit_BYTEINT(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            (operators.add, operators.sub): {
+                (BYTEINT, SMALLINT, INTEGER): INTEGER,
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                BIGINT: BIGINT,
+                DECIMAL: DECIMAL,
+                FLOAT: FLOAT,
+                NUMBER: NUMBER,
+                DATE: DATE,
+            },
+            (operators.mul, operators.truediv, operators.mod): {
+                (BYTEINT, SMALLINT, INTEGER, DATE): INTEGER,
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                BIGINT: BIGINT,
+                DECIMAL: DECIMAL,
+                FLOAT: FLOAT,
+                NUMBER: NUMBER,
+            }
         })
 
     def visit_DECIMAL(self, type_, other, **kw):
@@ -1237,13 +1258,27 @@ class _LookupStrategy(_AdaptStrategy):
                 (CHAR, VARCHAR, BLOB): FLOAT,
                 FLOAT: FLOAT,
                 NUMBER: NUMBER,
-                DATE: DATE
+                DATE: DATE,
             },
             (operators.sub, operators.mul, operators.truediv,
              operators.mod): {
                  (CHAR, VARCHAR, BLOB): FLOAT,
                  FLOAT: FLOAT,
-                 NUMBER: NUMBER
+                 NUMBER: NUMBER,
+             }
+        })
+
+    def visit_NUMBER(self, type_, other, **kw):
+        return self._flatten_tuple_keyed_dict({
+            operators.add: {
+                (CHAR, VARCHAR, BLOB): FLOAT,
+                FLOAT: FLOAT,
+                DATE: DATE,
+            },
+            (operators.sub, operators.mul, operators.truediv,
+             operators.mod): {
+                 (CHAR, VARCHAR, BLOB): FLOAT,
+                 FLOAT: FLOAT,
              }
         })
 
@@ -1251,16 +1286,16 @@ class _LookupStrategy(_AdaptStrategy):
         return self._flatten_tuple_keyed_dict({
             operators.add: {
                 (CHAR, VARCHAR, BLOB): FLOAT,
+                FLOAT: FLOAT,
                 DATE: INTEGER,
-                FLOAT: FLOAT
             },
             operators.sub: {
                 (CHAR, VARCHAR, BLOB): FLOAT,
+                FLOAT: FLOAT,
                 DATE: INTEGER,
-                FLOAT: FLOAT
             },
             (operators.mul, operators.truediv, operators.mod): {
-                (DATE, INTEGER, SMALLINT, BYTEINT): INTEGER,
+                (BYTEINT, SMALLINT, INTEGER, DATE): INTEGER,
                 (CHAR, VARCHAR, BLOB): FLOAT,
                 (FLOAT, TIME): FLOAT,
                 BIGINT: BIGINT,
@@ -1273,7 +1308,7 @@ class _LookupStrategy(_AdaptStrategy):
         return self._flatten_tuple_keyed_dict({
             (operators.add, operators.mul, operators.truediv,
              operators.mod): {
-                 DATE: FLOAT
+                 DATE: FLOAT,
              }
         })
 
@@ -1287,46 +1322,25 @@ class _LookupStrategy(_AdaptStrategy):
                                 (other.charset == 'unicode')))
                        else CHAR),
                 VARCHAR: VARCHAR,
-                CLOB: CLOB
+                CLOB: CLOB,
             },
             (operators.add, operators.sub, operators.mul,
              operators.truediv, operators.mod): {
-                 (INTEGER, SMALLINT, BIGINT, BYTEINT, NUMBER, FLOAT, DECIMAL,
-                  DATE, CHAR, VARCHAR): FLOAT
+                 (BYTEINT, SMALLINT, INTEGER, BIGINT, DECIMAL, FLOAT, NUMBER,
+                  DATE, CHAR, VARCHAR): FLOAT,
              }
         })
 
     def visit_VARCHAR(self, type_, other, **kw):
         return self._flatten_tuple_keyed_dict({
             operators.concat_op: {
-                CLOB: CLOB
+                CLOB: CLOB,
             },
             (operators.add, operators.sub, operators.mul,
              operators.truediv, operators.mod): {
-                 (INTEGER, SMALLINT, BIGINT, BYTEINT, NUMBER, FLOAT, DECIMAL,
-                  DATE, CHAR, VARCHAR): FLOAT
+                 (BYTEINT, SMALLINT, INTEGER, BIGINT, DECIMAL, FLOAT, NUMBER,
+                  DATE, CHAR, VARCHAR): FLOAT,
              }
-        })
-
-    def visit_BYTEINT(self, type_, other, **kw):
-        return self._flatten_tuple_keyed_dict({
-            (operators.add, operators.sub): {
-                (INTEGER, SMALLINT, BYTEINT): INTEGER,
-                (CHAR, VARCHAR, BLOB): FLOAT,
-                BIGINT: BIGINT,
-                DECIMAL: DECIMAL,
-                FLOAT: FLOAT,
-                NUMBER: NUMBER,
-                DATE: DATE
-            },
-            (operators.mul, operators.truediv, operators.mod): {
-                (INTEGER, SMALLINT, BYTEINT, DATE): INTEGER,
-                (CHAR, VARCHAR, BLOB): FLOAT,
-                BIGINT: BIGINT,
-                DECIMAL: DECIMAL,
-                FLOAT: FLOAT,
-                NUMBER: NUMBER
-            }
         })
 
     def visit_BYTE(self, type_, other, **kw):
@@ -1343,17 +1357,3 @@ class _LookupStrategy(_AdaptStrategy):
                 BLOB: BLOB
             }
         }
-
-    def visit_NUMBER(self, type_, other, **kw):
-        return self._flatten_tuple_keyed_dict({
-            operators.add: {
-                (CHAR, VARCHAR, BLOB): FLOAT,
-                FLOAT: FLOAT,
-                DATE: DATE
-            },
-            (operators.sub, operators.mul, operators.truediv,
-             operators.mod): {
-                 (CHAR, VARCHAR, BLOB): FLOAT,
-                 FLOAT: FLOAT
-             }
-        })
