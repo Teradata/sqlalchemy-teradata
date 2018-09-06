@@ -9,11 +9,7 @@ class TeradataTypeResolver:
     """Type Resolver for Teradata Data Types.
 
     For dynamically instantiating instances of TypeEngine (subclasses).
-    This class mimics the design of SQLAlchemy's TypeCompiler and in fact
-    takes advantage of the compiler's visitor double-dispatch mechanism.
-    This is accomplished by having the main process method redirect to the
-    passed in type_'s corresponding visit method defined by the TypeResolver
-    below.
+    This class mimics the design of SQLAlchemy's TypeCompiler.
     """
 
     def process(self, type_, **kw):
@@ -24,9 +20,8 @@ class TeradataTypeResolver:
 
         Args:
             type_: The type to be resolved (instantiated).
-
-            **kw:  Keyword arguments used for populating the attributes of the
-                   type being resolved.
+            **kw: Keyword arguments used for populating the attributes of the
+                type being resolved.
 
         Returns:
             An instance of type_ correctly populated with the appropriate
@@ -113,9 +108,10 @@ class TeradataTypeResolver:
 
     def _resolve_type_string(self, type_, **kw):
         return type_(
-            length=int(kw['length'] / 2) if
-                   (kw['chartype'] == 'UNICODE' or kw['chartype'] == 'GRAPHIC')
-                    else kw['length'],
+            length=(int(kw['length'] / 2)
+                    if (kw['chartype'] == 'UNICODE'
+                        or kw['chartype'] == 'GRAPHIC')
+                    else kw['length']),
             charset=kw['chartype'])
 
     def visit_CHAR(self, type_, **kw):
@@ -143,7 +139,7 @@ class TeradataTypeResolver:
         return self._resolve_type_binary(type_, **kw)
 
     def visit_BLOB(self, type_, **kw):
-        # TODO Multiplier of BLOB currently not recovered when reflected
+        # TODO: Multiplier of BLOB currently not recovered when reflected
         return self._resolve_type_binary(type_, **kw)
 
     def visit_NUMBER(self, type_, **kw):

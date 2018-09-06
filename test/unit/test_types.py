@@ -131,7 +131,7 @@ class TestCompileSQLStandard(fixtures.TestBase):
         assert(self._compile(INTEGER())  == 'INTEGER')
         assert(self._compile(SMALLINT()) == 'SMALLINT')
         assert(self._compile(BIGINT())   == 'BIGINT')
-        assert(self._compile(DECIMAL())  == 'DECIMAL')
+        assert(self._compile(DECIMAL())  == 'DECIMAL(38, 19)')
         assert(self._compile(FLOAT())    == 'FLOAT')
         assert(self._compile(DATE())     == 'DATE')
 
