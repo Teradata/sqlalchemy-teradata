@@ -20,10 +20,11 @@ class TeradataCompiler(compiler.SQLCompiler):
         """Handles the part of the select statement before the columns are
         specified.
 
-        Note: Teradata does not allow a 'distinct' to be specified when 'top'
-              is used in the same select statement. Instead, if a user specifies
-              both in the same select clause, the DISTINCT will be used with a
-              ROW_NUMBER OVER(ORDER BY) subquery.
+        Note:
+            Teradata does not allow a 'distinct' to be specified when 'top'
+            is used in the same select statement. Instead, if a user specifies
+            both in the same select clause, the DISTINCT will be used with a
+            ROW_NUMBER OVER(ORDER BY) subquery.
         """
 
         pre = select._distinct and 'DISTINCT ' or ''
@@ -58,10 +59,10 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
         self._verify_index_table(index)
         preparer = self.preparer
 
-        text = "CREATE "
+        text = 'CREATE '
         if index.unique:
-            text += "UNIQUE "
-        text += "INDEX {} ({}) ON {}".format(
+            text += 'UNIQUE '
+        text += 'INDEX {} ({}) ON {}'.format(
             self._prepared_index_name(index, include_schema=include_schema),
             ', '.join(self.sql_compiler.process(expr, include_table=False,
                                                 literal_binds=True)
@@ -88,8 +89,9 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
               ...
             )
 
-        teradata_suffixes can also be a list of strings to be appended in the
-        order given.
+        Note:
+            teradata_suffixes can also be a list of strings to be appended in
+            the order given.
         """
 
         post = table.dialect_kwargs['teradata_suffixes']
@@ -110,9 +112,6 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
         """This hook processes the TDPostCreateTableOpts given by the
         teradata_post_create dialect kwarg for Table.
 
-        Note that there are other dialect kwargs defined that could possibly
-        be processed here. See the kwargs defined in dialect.TeradataDialect.
-
         Example:
             from sqlalchemy_teradata.compiler import TDCreateTablePost as post
             Table('t1', meta,
@@ -131,6 +130,10 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
                  mergeblockratio=85 (
                    ...
             )
+
+        Note:
+            There are other dialect kwargs defined that could possibly be
+            processed here. See the kwargs defined in dialect.TeradataDialect.
         """
 
         kw = table.dialect_kwargs['teradata_post_create']
@@ -142,8 +145,8 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
     def get_column_specification(self, column, **kwargs):
 
         if column.table is None:
-            raise exc.CompileError("Teradata requires Table-bound columns in "
-                                   "order to generate DDL")
+            raise exc.CompileError('Teradata requires Table-bound columns in '
+                                   'order to generate DDL')
 
         colspec = '{} {}'.format(self.preparer.format_column(column),
                                  self.dialect.type_compiler.process(
@@ -174,9 +177,10 @@ class TeradataOptions(object):
     def format_cols(self, key, val):
         """
         Args:
-            key (str):
-            val (list(str)): Can have an optional dict as the last element;
-                the dict values are appended at the end of the col list.
+            key (str): The key of a Teradata option.
+            val (list(str)): The values of a Teradata option. Can have an
+                optional dict as the last element; the dict values are appended
+                at the end of the col list.
         """
 
         res = ''
@@ -236,15 +240,20 @@ class TDCreateTableSuffix(TeradataOptions):
             self._append(self.opts, {'with journal table': tablename}))
 
     def before_journal(self, prefix='dual'):
-        """Prefix is a string taking vaues of 'no' or 'dual'."""
+        """
+        Args:
+            prefix (str): A string taking vaues of 'no' or 'dual'.
+        """
 
         assert prefix in ('no', 'dual')
         res = prefix + ' ' + 'before journal'
         return self.__class__(self._append(self.opts, {res: None}))
 
     def after_journal(self, prefix='not local'):
-        """Prefix is a string taking vaues of 'no', 'dual', 'local', or
-        'not local'.
+        """
+        Args:
+            prefix (str): A string taking vaues of 'no', 'dual', 'local',
+                or 'not local'.
         """
 
         assert prefix in ('no', 'dual', 'local', 'not local')
@@ -252,8 +261,10 @@ class TDCreateTableSuffix(TeradataOptions):
         return self.__class__(self._append(self.opts, {res: None}))
 
     def checksum(self, integrity_checking='default'):
-        """Integrity_checking is a string taking vaues of 'on', 'off', or
-        'default'.
+        """
+        Args:
+            integrity_checking (str): A string taking vaues of 'on', 'off',
+                or 'default'.
         """
 
         assert integrity_checking in ('on', 'off', 'default')
@@ -276,7 +287,7 @@ class TDCreateTableSuffix(TeradataOptions):
     def mergeblockratio(self, integer=None):
         """
         Args:
-            integer (int): Takes values from 0 to 100 inclusive.
+            integer (int): An integer taking values from 0 to 100 inclusive.
         """
 
         res = ('default mergeblockratio'
@@ -293,7 +304,10 @@ class TDCreateTableSuffix(TeradataOptions):
             self._append(self.opts, {'maximum datablocksize': None}))
 
     def datablocksize(self, data_block_size=None):
-        """data_block_size is an integer specifying the number of bytes."""
+        """
+        Args:
+            data_block_size (int): An integer specifying the number of bytes.
+        """
 
         res = ('datablocksize'
                if data_block_size is not None
@@ -304,7 +318,8 @@ class TDCreateTableSuffix(TeradataOptions):
     def blockcompression(self, opt='default'):
         """
         Args:
-            opt (str): Takes values 'autotemp', 'default', 'manual', or 'never'.
+            opt (str): A string taking values 'autotemp', 'default', 'manual',
+                or 'never'.
         """
 
         return self.__class__(
@@ -319,7 +334,8 @@ class TDCreateTableSuffix(TeradataOptions):
     def with_isolated_loading(self, concurrent=False, opt=None):
         """
         Args:
-            opt (string): Takes values 'all', 'insert', 'none', or None.
+            opt (string): A string taking values 'all', 'insert', 'none',
+                or None.
         """
 
         assert opt in ('all', 'insert', 'none', None)
@@ -356,7 +372,7 @@ class TDCreateTablePost(TeradataOptions):
         Args:
             name (str): The primary index.
             unique (bool): If true then unique primary index is specified.
-            cols (list(str)): The column names.
+            cols (list(str)): A list of column names.
         """
 
         res = 'unique primary index' if unique else 'primary index'
@@ -376,10 +392,18 @@ class TDCreateTablePost(TeradataOptions):
 
     def partition_by_col(self, all_but=False, cols={}, rows={}, const=None):
         """
+        Args:
+            cols (dict): A dictionary whose key is the column name and value
+                True or False specifying AUTO COMPRESS or NO AUTO COMPRESS
+                respectively. The columns are stored with COLUMN format.
+            rows (dict): A dictionary similar to cols except the ROW format is
+                used.
+            const (int): An unsigned BIGINT.
+
         Example:
             Opts.partition_by_col(cols={'c1': True, 'c2': False, 'c3': None},
-                                  rows={'d1': True, 'd2':False, 'd3': None},
-                                  const= 1)
+                                  rows={'d1': True, 'd2': False, 'd3': None},
+                                  const=1)
             will emit:
 
             partition by(
@@ -392,15 +416,6 @@ class TDCreateTablePost(TeradataOptions):
                     row(d3))
                     add 1
                 )
-
-        Args:
-            cols (dict): A dictionary whose key is the column name and value
-                         True or False specifying AUTO COMPRESS or NO AUTO
-                         COMPRESS respectively. The columns are stored with
-                         COLUMN format.
-            rows (dict): A dictionary similar to cols except the ROW format is
-                         used.
-            const (int): An unsigned BIGINT.
         """
 
         res = ('partition by( column all but'
@@ -416,19 +431,19 @@ class TDCreateTablePost(TeradataOptions):
 
     def _visit_partition_by(self, cols, rows):
         if cols:
-            c = ['column('+ k +') auto compress '
+            c = ['column({}) auto compress '.format(k)
                  for k, v in cols.items() if v is True]
-            c += ['column('+ k +') no auto compress'
+            c += ['column({}) no auto compress'.format(k)
                   for k, v in cols.items() if v is False]
-            c += ['column('+ k +')'
+            c += ['column({})'.format(k)
                   for k, v in cols.items() if v is None]
 
         if rows:
-            c += ['row('+ k +') auto compress'
+            c += ['row({}) auto compress'.format(k)
                   for k, v in rows.items() if v is True]
-            c += ['row('+ k +') no auto compress'
+            c += ['row({}) no auto compress'.format(k)
                   for k, v in rows.items() if v is False]
-            c += ['row('+ k +')'
+            c += ['row({})'.format(k)
                   for k, v in rows.items() if v is None]
 
         return c
@@ -464,7 +479,7 @@ class TDCreateTablePost(TeradataOptions):
         and ordering syntax elements.
 
         Args:
-            index is a sqlalchemy.sql.schema.Index object.
+            index (obj): A sqlalchemy.sql.schema.Index object.
         """
 
         return self.__class__(self._append(self.opts, {res: c}))
@@ -499,6 +514,28 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
 
     def visit_boolean(self, type_, **kw):
         return self.visit_BYTEINT(type_, **kw)
+
+    def visit_BYTEINT(self, type_, **kw):
+        return 'BYTEINT'
+
+    def visit_NUMBER(self, type_, **kw):
+        args = ((str(type_.precision), '')
+                if type_.scale is None
+                else (str(type_.precision), ', ' + str(type_.scale)))
+        return 'NUMBER{}'.format(
+            '' if type_.precision is None else '({}{})'.format(*args))
+
+    def visit_TIME(self, type_, **kw):
+        tz = ' WITH TIME ZONE' if type_.timezone else ''
+        prec = self._get('precision', type_, kw)
+        prec = '({})'.format(str(prec)) if prec is not None else ''
+        return 'TIME{}{}'.format(prec, tz)
+
+    def visit_TIMESTAMP(self, type_, **kw):
+        tz = ' WITH TIME ZONE' if type_.timezone else ''
+        prec = self._get('precision', type_, kw)
+        prec = '({})'.format(str(prec)) if prec is not None else ''
+        return 'TIMESTAMP{}{}'.format(prec, tz)
 
     def visit_INTERVAL_YEAR(self, type_, **kw):
         return 'INTERVAL YEAR{}'.format(
@@ -594,18 +631,6 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
                    if type_.format is not None
                    else ''))
 
-    def visit_TIME(self, type_, **kw):
-        tz = ' WITH TIME ZONE' if type_.timezone else ''
-        prec = self._get('precision', type_, kw)
-        prec = '({})'.format(str(prec)) if prec is not None else ''
-        return 'TIME{}{}'.format(prec, tz)
-
-    def visit_TIMESTAMP(self, type_, **kw):
-        tz = ' WITH TIME ZONE' if type_.timezone else ''
-        prec = self._get('precision', type_, kw)
-        prec = '({})'.format(str(prec)) if prec is not None else ''
-        return 'TIMESTAMP{}{}'.format(prec, tz)
-
     def _string_process(self, type_, datatype, **kw):
         length = self._get('length', type_, kw)
         length = '({})'.format(str(length)) if length is not None  else ''
@@ -633,9 +658,6 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
 
         return self._string_process(type_, 'CLOB', **kw)
 
-    def visit_BYTEINT(self, type_, **kw):
-        return 'BYTEINT'
-
     def visit_BYTE(self, type_, **kw):
         return 'BYTE{}'.format(
             '(' + str(type_.length) + ')' if type_.length is not None else '')
@@ -651,13 +673,6 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
              + '{})'.format(multiplier if multiplier is not None else ''))
             if type_.length is not None
             else '')
-
-    def visit_NUMBER(self, type_, **kw):
-        args = ((str(type_.precision), '')
-                if type_.scale is None
-                else (str(type_.precision), ', ' + str(type_.scale)))
-        return 'NUMBER{}'.format(
-            '' if type_.precision is None else '({}{})'.format(*args))
 
 
 #@compiles(Select, 'teradata')

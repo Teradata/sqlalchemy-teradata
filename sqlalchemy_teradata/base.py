@@ -42,7 +42,6 @@ class TeradataIdentifierPreparer(compiler.IdentifierPreparer):
 
 
 class CreateView(DDLElement):
-
     """SQL expression element for creating Views.
 
     Recipe from: https://bitbucket.org/zzzeek/sqlalchemy/wiki/UsageRecipes/Views
@@ -60,7 +59,6 @@ def visit_create_view(element, compiler, **kw):
 
 
 class DropView(DDLElement):
-
     """SQL expression element for dropping Views."""
 
     def __init__(self, name):
@@ -68,10 +66,11 @@ class DropView(DDLElement):
 
 @compiles(DropView)
 def visit_drop_view(element, compiler, **kw):
-    return "DROP VIEW {}".format(element.name)
+    return 'DROP VIEW {}'.format(element.name)
 
 
 class CreateTableAs(DDLElement):
+    """SQL expression element for creating table as (query)."""
 
     def __init__(self, name, selectable, data=False):
         self.name = name

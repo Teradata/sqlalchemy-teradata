@@ -99,20 +99,20 @@ class TeradataDialect(default.DefaultDialect):
     construct_arguments = [
         (Table,
          {
-             "post_create": None,
-             "suffixes": None
+             'post_create': None,
+             'suffixes': None
          }),
 
         (Index,
          {
-             "order_by": None,
-             "loading": None
+             'order_by': None,
+             'loading': None
          }),
 
         (Column,
          {
-             "compress": None,
-             "identity": None
+             'compress': None,
+             'identity': None
          }),
     ]
 
@@ -123,7 +123,7 @@ class TeradataDialect(default.DefaultDialect):
         if url is not None:
             params = super(TeradataDialect, self).create_connect_args(url)[1]
             cargs = (
-                "Teradata",
+                'Teradata',
                 params['host'],
                 params['username'],
                 params['password'],
@@ -137,6 +137,7 @@ class TeradataDialect(default.DefaultDialect):
 
         return None
 
+    # TODO: This is hidden by the `dbapi` attribute in engine.default
     @classmethod
     def dbapi(cls):
         """Hook to the dbapi2.0 implementation's module."""
@@ -144,7 +145,7 @@ class TeradataDialect(default.DefaultDialect):
         from teradata import tdodbc
         return tdodbc
 
-    def normalize_name(self, name, **kw):
+    def normalize_name(self, name):
         if name is not None:
             return name.strip()
 
@@ -193,7 +194,8 @@ class TeradataDialect(default.DefaultDialect):
             row['ColumnType'],
             length=int(row['ColumnLength'] or 0),
             chartype=chartype[row['CharType']
-                              if row['ColumnType'] in stringtypes else 0],
+                              if row['ColumnType'] in stringtypes
+                              else 0],
             prec=int(row['DecimalTotalDigits'] or 0),
             scale=int(row['DecimalFractionalDigits'] or 0),
             fmt=row['ColumnFormat'])
@@ -245,8 +247,11 @@ class TeradataDialect(default.DefaultDialect):
 
         # If this is a view in pre-16 version, get types for individual columns
         if helpView:
-            res = [dict(r, **(self._get_column_help(
-                connection, schema, table_name, r['ColumnName']))) for r in res]
+            res = [dict(r, **(self._get_column_help(connection,
+                                                    schema,
+                                                    table_name,
+                                                    r['ColumnName'])))
+                   for r in res]
 
         return [self._get_column_info(row) for row in res]
 
@@ -318,8 +323,8 @@ class TeradataDialect(default.DefaultDialect):
         """Override.
 
         TODO:
-            1: Check if we need PRIMARY Indices or PRIMARY KEY Indices.
-            2: Check for border cases (No PK Indices).
+            * Check if we need PRIMARY Indices or PRIMARY KEY Indices.
+            * Check for border cases (No PK Indices).
         """
 
         if schema is None:
@@ -347,8 +352,8 @@ class TeradataDialect(default.DefaultDialect):
             index_name = self.normalize_name(index_column['IndexName'])
 
         return {
-            "constrained_columns": index_columns,
-            "name": index_name,
+            'constrained_columns': index_columns,
+            'name': index_name,
         }
 
     def get_unique_constraints(self, connection, table_name, schema=None, **kw):
@@ -475,8 +480,9 @@ class TeradataDialect(default.DefaultDialect):
     def get_transaction_mode(self, connection, **kw):
         """Returns the transaction mode set for the current session.
 
-        T = TDBS
-        A = ANSI
+        Returns:
+            'T' = TDBS,
+            'A' = ANSI
         """
 
         stmt = select([text('transaction_mode')],
@@ -486,7 +492,7 @@ class TeradataDialect(default.DefaultDialect):
         res = connection.execute(stmt).scalar()
         return res
 
-    def _get_server_version_info(self, connection, **kw):
+    def _get_server_version_info(self, connection):
         """Returns the Teradata Database software version."""
 
         stmt = select([text('InfoData')],
