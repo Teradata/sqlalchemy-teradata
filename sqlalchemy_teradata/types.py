@@ -1062,7 +1062,7 @@ class _TDBinary(_TDConcatenable, _TDType, sqltypes._Binary):
         return process
 
 
-class BYTE(_TDBinary, sqltypes.BINARY):
+class BYTE(_TDBinary):
     """Teradata BYTE data type.
 
     Represents a fixed-length binary string.
@@ -1095,7 +1095,7 @@ class BYTE(_TDBinary, sqltypes.BINARY):
         return process
 
 
-class VARBYTE(_TDBinary, sqltypes.VARBINARY):
+class VARBYTE(_TDBinary):
     """Teradata VARBYTE data type.
 
     Represents a variable-length binary string.
@@ -1114,13 +1114,15 @@ class VARBYTE(_TDBinary, sqltypes.VARBINARY):
         super(VARBYTE, self).__init__(length=length, **kwargs)
 
 
-class BLOB(_TDBinary, sqltypes.BLOB):
+class BLOB(_TDBinary):
     """Teradata BLOB data type.
 
     Represents a large binary string of raw bytes. A binary large object (BLOB)
     column can store binary objects, such as graphics, video clips, files, and
     documents.
     """
+
+    __visit_name__ = 'BLOB'
 
     def __init__(self, length=None, multiplier=None, **kwargs):
         """Construct a BLOB object.
