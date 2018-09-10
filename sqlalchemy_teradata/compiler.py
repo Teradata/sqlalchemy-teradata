@@ -104,7 +104,7 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
 
         if post:
             assert isinstance(post, list)
-            res = ',\n ' + ',\n'.join(post)
+            return ',\n' + ',\n'.join(post)
 
         return ''
 
@@ -137,9 +137,9 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
         """
 
         kw = table.dialect_kwargs['teradata_post_create']
-        if isinstance(kw, TDCreateTablePost):
-            if kw:
-                return '\n' + kw.compile()
+        if isinstance(kw, TDCreateTablePost) and kw:
+            return '\n' + kw.compile()
+
         return ''
 
     def get_column_specification(self, column, **kwargs):
