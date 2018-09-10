@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from sqlalchemy import Table, Column, Index
 from sqlalchemy import MetaData, create_engine
 from sqlalchemy import sql
@@ -200,20 +201,20 @@ class TestCompilePostCreateDDL(fixtures.TestBase):
         Tests SQL compilation of CREATE TABLE with (all) teradata dialect
         specific post_creates.
         """
-        partition_opts = (
-            True,
-            {
-                'c1': True,
-                'c2': False,
-                'c3': None,
-                'c4': False,
-                'c5': True
-            },
-            {
-                'd1': True,
-                'd2': None,
-                'd3': False
-            }, 1)
+        partition_opts = {
+            'all_but': True,
+            'cols': OrderedDict([
+                ('c1', True),
+                ('c2', False),
+                ('c3', None),
+                ('c4', False),
+                ('c5', True)
+            ]),
+            'rows': OrderedDict([
+                ('d1', True),
+                ('d2', None),
+                ('d3', False)
+            ])}
         my_table = Table('tablename', self.metadata,
             Column('c1', sqlalch_td.INTEGER),
             Column('c2', sqlalch_td.DECIMAL),
@@ -224,9 +225,9 @@ class TestCompilePostCreateDDL(fixtures.TestBase):
                 TDCreateTablePost().no_primary_index() \
                                    .primary_index('indexname', True, ['c1']) \
                                    .primary_amp('ampname', ['c2']) \
-                                   .partition_by_col(*(partition_opts[:-1]), None)
-                                   .partition_by_col_auto_compress(*partition_opts)
-                                   .partition_by_col_no_auto_compress(*partition_opts)
+                                   .partition_by_col(const=None, **partition_opts)
+                                   .partition_by_col_auto_compress(const=1, **partition_opts)
+                                   .partition_by_col_no_auto_compress(const=1, **partition_opts)
                                    .unique_index('uniqueindexname', ['c2, c3']))
         self.metadata.create_all()
 
