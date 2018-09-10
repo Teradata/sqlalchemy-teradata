@@ -1,6 +1,6 @@
 # Change Log
 
-## [Unreleased](https://github.com/Teradata/sqlalchemy-teradata/tree/HEAD)
+## [v0.9.0](https://github.com/Teradata/sqlalchemy-teradata/tree/HEAD)
 
 **Implemented enhancements:**
 
