@@ -14,7 +14,7 @@ from .types import (INTEGER, SMALLINT, BIGINT, DECIMAL, DATE, TIME,
                     INTERVAL_MINUTE, INTERVAL_MINUTE_TO_SECOND, INTERVAL_SECOND,
                     PERIOD_DATE, PERIOD_TIME, PERIOD_TIMESTAMP)
 
-__version__ = '0.5.0'
+__version__ = '0.9.0'
 
 __all__ = ('INTEGER', 'SMALLINT', 'BIGINT', 'DECIMAL', 'FLOAT', 'DATE', 'TIME',
            'TIMESTAMP', 'CHAR', 'VARCHAR', 'CLOB', 'NUMBER', 'BYTEINT', 'BYTE',
