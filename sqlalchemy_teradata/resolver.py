@@ -6,7 +6,7 @@
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
 class TeradataTypeResolver:
-    """Type Resolver for Teradata Data Types.
+    """Type resolver for Teradata data types.
 
     For dynamically instantiating instances of TypeEngine (subclasses).
     This class mimics the design of SQLAlchemy's TypeCompiler.
@@ -15,7 +15,7 @@ class TeradataTypeResolver:
     def process(self, type_, **kw):
         """Resolves the type.
 
-        Instantiate the type and populate its relevant attributes with the
+        Instantiates the type and populate its relevant attributes with the
         appropriate keyword arguments.
 
         Args:
@@ -118,8 +118,8 @@ class TeradataTypeResolver:
     def _resolve_type_string(self, type_, **kw):
         return type_(
             length=(int(kw['length'] / 2)
-                    if (kw['chartype'] == 'UNICODE'
-                        or kw['chartype'] == 'GRAPHIC')
+                    if (kw['chartype'] == 'UNICODE' or
+                        kw['chartype'] == 'GRAPHIC')
                     else kw['length']),
             charset=kw['chartype'])
 

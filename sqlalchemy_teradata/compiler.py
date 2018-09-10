@@ -274,7 +274,7 @@ class TDCreateTableSuffix(TeradataOptions):
     def freespace(self, percentage=0):
         """
         Args:
-            percentage (int): An integer taking values from 0 to 75.
+            percentage (int): An integer taking values from 0 to 75 inclusive.
         """
 
         return self.__class__(
@@ -322,6 +322,7 @@ class TDCreateTableSuffix(TeradataOptions):
                 or 'never'.
         """
 
+        assert opt in ('autotemp', 'default', 'manual', 'never')
         return self.__class__(
             self._append(self.opts, {'blockcompression': opt}))
 
@@ -388,7 +389,7 @@ class TDCreateTablePost(TeradataOptions):
 
         res = 'primary amp index'
         res += ' ' + name if name is not None else ''
-        return self.__class__(self._append(self.opts, {res:cols}))
+        return self.__class__(self._append(self.opts, {res: cols}))
 
     def partition_by_col(self, all_but=False, cols={}, rows={}, const=None):
         """
@@ -404,23 +405,25 @@ class TDCreateTablePost(TeradataOptions):
             Opts.partition_by_col(cols={'c1': True, 'c2': False, 'c3': None},
                                   rows={'d1': True, 'd2': False, 'd3': None},
                                   const=1)
+
             will emit:
 
-            partition by(
-                column(
-                    column(c1) auto compress,
-                    column(c2) no auto compress,
-                    column(c3),
-                    row(d1) auto compress,
-                    row(d2) no auto compress,
-                    row(d3))
-                    add 1
-                )
+                partition by(
+                    column(
+                        column(c1) auto compress,
+                        column(c2) no auto compress,
+                        column(c3),
+                        row(d1) auto compress,
+                        row(d2) no auto compress,
+                        row(d3))
+                        add 1
+                    )
         """
 
         res = ('partition by( column all but'
                if all_but
                else 'partition by( column')
+
         c = self._visit_partition_by(cols, rows)
         c += [{'post': ((['add {}'.format(str(const))]
                          if const is not None

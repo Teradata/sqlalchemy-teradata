@@ -22,7 +22,7 @@ class _TDComparable:
         """Comparator for expression adaptation.
 
         Use the TeradataExpressionAdapter to process the resulting types
-        for binary operations over Teradata types.
+        for binary operations over Teradata data types.
         """
 
         def _adapt_expression(self, op, other_comparator):
@@ -44,9 +44,9 @@ class _TDConcatenable:
     class Comparator(_TDComparable.Comparator):
         """Comparator for expression adaptation.
 
-        Overloads the addition (+) operator over concatenable Teradata types
-        to use concat_op. Note that this overloading only occurs between types
-        within the same type_affinity.
+        Overloads the addition (+) operator over concatenable Teradata data
+        types to use concat_op. Note that this overloading only occurs between
+        types within the same type_affinity.
         """
 
         def _adapt_expression(self, op, other_comparator):
@@ -92,6 +92,8 @@ class _TDLiteralCoercer:
         return sqltypes.NullType()
 
 
+# TODO: Figure out if this should be removed as some internal code paths may
+#       rely on calls to __str__ compiling the type.
 class _TDType(_TDLiteralCoercer, _TDComparable):
     """Teradata data type.
 
@@ -116,7 +118,7 @@ class BYTEINT(_TDType, sqltypes.Integer):
     __visit_name__ = 'BYTEINT'
 
     def __init__(self, **kwargs):
-        """Construct a BYTEINT Object."""
+        """Construct a BYTEINT object."""
 
         super(BYTEINT, self).__init__(**kwargs)
 
@@ -128,7 +130,7 @@ class SMALLINT(_TDType, sqltypes.SMALLINT):
     """
 
     def __init__(self, **kwargs):
-        """Construct a SMALLINT Object."""
+        """Construct a SMALLINT object."""
 
         super(SMALLINT, self).__init__(**kwargs)
 
@@ -141,7 +143,7 @@ class INTEGER(_TDType, sqltypes.INTEGER):
     """
 
     def __init__(self, **kwargs):
-        """Construct an INTEGER Object."""
+        """Construct an INTEGER object."""
 
         super(INTEGER, self).__init__(**kwargs)
 
@@ -154,7 +156,7 @@ class BIGINT(_TDType, sqltypes.BIGINT):
     """
 
     def __init__(self, **kwargs):
-        """Construct a BIGINT Object."""
+        """Construct a BIGINT object."""
 
         super(BIGINT, self).__init__(**kwargs)
 
@@ -167,7 +169,7 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
     """
 
     def __init__(self, precision=38, scale=19, **kwargs):
-        """Construct a DECIMAL Object.
+        """Construct a DECIMAL object.
 
         Args:
             precision (int): The precision (the maximum number of digits that
@@ -176,7 +178,7 @@ class DECIMAL(_TDType, sqltypes.DECIMAL):
                 is from 0 through `precision`.
 
         Note:
-            When values are not specified for `precision`, `scale`, then the
+            When values are not specified for `precision` and `scale` then the
             default is DECIMAL(5, 0). When a value is not specified for
             `scale`, then the default is DECIMAL(`precision`, 0).
         """
@@ -424,7 +426,7 @@ class INTERVAL_DAY(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL DAY.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL DAY columns.
         """
 
@@ -459,7 +461,7 @@ class INTERVAL_DAY_TO_HOUR(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL DAY TO HOUR.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL DAY TO HOUR columns.
         """
 
@@ -495,7 +497,7 @@ class INTERVAL_DAY_TO_MINUTE(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL DAY TO MINUTE.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL DAY TO MINUTE columns.
         """
 
@@ -535,7 +537,7 @@ class INTERVAL_DAY_TO_SECOND(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL DAY TO SECOND.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL DAY TO SECOND columns.
         """
 
@@ -570,7 +572,7 @@ class INTERVAL_HOUR(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL HOUR.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL HOUR columns.
         """
 
@@ -606,7 +608,7 @@ class INTERVAL_HOUR_TO_MINUTE(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL HOUR TO MINUTE.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL HOUR TO MINUTE columns.
         """
 
@@ -648,7 +650,7 @@ class INTERVAL_HOUR_TO_SECOND(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL HOUR TO SECOND.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL HOUR TO SECOND columns.
         """
 
@@ -686,7 +688,7 @@ class INTERVAL_MINUTE(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL MINUTE.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL MINUTE columns.
         """
 
@@ -726,7 +728,7 @@ class INTERVAL_MINUTE_TO_SECOND(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL MINUTE TO SECOND.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL MINUTE TO SECOND columns.
         """
 
@@ -768,7 +770,7 @@ class INTERVAL_SECOND(_TDInterval):
         """Handles the processing of datetime.timedelta objects for inserting
         into columns of type INTERVAL SECOND.
 
-        Timedelta objects are converted to Teradata Interval objects
+        The Timedelta objects are converted into Teradata Interval objects
         appropriate for inserting into INTERVAL SECOND columns.
         """
 
@@ -1247,7 +1249,7 @@ class _IntervalRuleStrategy(_AdaptStrategy):
                 else interval.__class__)
 
     def _tokenize_name(self, interval_name):
-        """Tokenize the name of Interval types.
+        """Tokenizes the name of Interval types.
 
         Returns:
             A list of (str) tokens of the corresponding Interval type name.
@@ -1260,7 +1262,7 @@ class _IntervalRuleStrategy(_AdaptStrategy):
                            interval_name.split('_')))
 
     def _combine_tokens(self, tok_l, tok_r):
-        """Combine the tokens of an Interval type to form its name.
+        """Combines the tokens of an Interval type to form its name.
 
         Returns:
             A string for the name of the Interval type corresponding to the
@@ -1290,7 +1292,7 @@ class _LookupStrategy(_AdaptStrategy):
             .get(other.__class__, type_.__class__)
 
     def _process_visit_name(self, visit_name):
-        """Generate the corresponding visit function name from a type's
+        """Generates the corresponding visit function name from a type's
         __visit_name__ field.
         """
 
@@ -1298,7 +1300,7 @@ class _LookupStrategy(_AdaptStrategy):
         return prefix + visit_name
 
     def _flatten_tuple_keyed_dict(self, tuple_dict):
-        """Recursively flatten a dictionary with (many-to-one) tuple keys to a
+        """Recursively flattens a dictionary with (many-to-one) tuple keys to a
         standard one.
         """
 
