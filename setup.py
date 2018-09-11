@@ -3,7 +3,7 @@ from setuptools import setup
 
 setup(
     name='sqlalchemy_teradata',
-    version='0.5.0',
+    version='0.9.0',
     description="Teradata dialect for SQLAlchemy",
     classifiers=[
                       'Environment :: Console',

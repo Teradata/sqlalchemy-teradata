@@ -198,9 +198,9 @@ class TestAdaptation(testing.fixtures.TestBase):
                          td_dtypes.Interval(minutes=20),
                          td_dtypes.Interval(minutes=20, seconds=20.20),
                          td_dtypes.Interval(seconds=20.20))
-        classes_tuple = ((*self.table_numeric.c, *self.table_character.c,
-                          *self.table_datetime.c, *self.table_binary.c,
-                          *self.table_interval.c),
+        classes_tuple = (tuple(self.table_numeric.c + self.table_character.c +\
+                               self.table_datetime.c + self.table_binary.c +\
+                               self.table_interval.c),
                          literals)
 
         triples = self._generate_interclass_triples(classes_tuple, ops)
