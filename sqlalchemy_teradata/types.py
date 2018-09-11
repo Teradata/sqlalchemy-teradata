@@ -345,6 +345,10 @@ class _TDInterval(_TDType, types.UserDefinedType):
 
         return process
 
+    @property
+    def python_type(self):
+        return td_dtype.Interval
+
 
 class INTERVAL_YEAR(_TDInterval):
     """Teradata INTERVAL YEAR data type.
@@ -794,6 +798,10 @@ class _TDPeriod(_TDType, types.UserDefinedType):
         """
 
         self.format = format
+
+    @property
+    def python_type(self):
+        return td_dtype.Period
 
 
 class PERIOD_DATE(_TDPeriod):
