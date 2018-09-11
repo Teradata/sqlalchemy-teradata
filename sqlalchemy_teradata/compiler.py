@@ -5,50 +5,51 @@
 # This module is part of sqlalchemy-teradata and is released under
 # the MIT License: http://www.opensource.org/licenses/mit-license.php
 
-from sqlalchemy import create_engine
-from sqlalchemy import exc, sql
-from sqlalchemy import schema as sa_schema
-from sqlalchemy.ext.compiler import compiles
+from sqlalchemy import exc
 from sqlalchemy.sql import compiler
-from sqlalchemy.sql import operators
-from sqlalchemy.sql.expression import Select
-from sqlalchemy.types import Unicode
 
 
 class TeradataCompiler(compiler.SQLCompiler):
 
-    def __init__(self, dialect, statement, column_keys=None, inline=False, **kwargs):
-        super(TeradataCompiler, self).__init__(dialect, statement, column_keys, inline, **kwargs)
+    def __init__(self, dialect, statement, column_keys=None, inline=False,
+                 **kwargs):
+        super(TeradataCompiler, self).__init__(dialect, statement, column_keys,
+                                               inline, **kwargs)
 
     def get_select_precolumns(self, select, **kwargs):
+        """Handles the part of the select statement before the columns are
+        specified.
+
+        Note:
+            Teradata does not allow a 'distinct' to be specified when 'top'
+            is used in the same select statement. Instead, if a user specifies
+            both in the same select clause, the DISTINCT will be used with a
+            ROW_NUMBER OVER(ORDER BY) subquery.
         """
-        handles the part of the select statement before the columns are specified.
-        Note: Teradata does not allow a 'distinct' to be specified when 'top' is
-              used in the same select statement.
 
-              Instead if a user specifies both in the same select clause,
-              the DISTINCT will be used with a ROW_NUMBER OVER(ORDER BY) subquery.
-        """
+        pre = select._distinct and 'DISTINCT ' or ''
 
-        pre = select._distinct and "DISTINCT " or ""
-
-        #TODO: decide whether we can replace this with the recipe...
-        if (select._limit is not None and select._offset is None):
-            pre += "TOP %d " % (select._limit)
+        # TODO: Decide whether we can replace this with the recipe.
+        if select._limit is not None and select._offset is None:
+            pre += 'TOP {} '.format(select._limit)
 
         return pre
 
     def visit_mod_binary(self, binary, operator, **kw):
-        return self.process(binary.left, **kw) + " MOD " + \
-            self.process(binary.right, **kw)
+        return (self.process(binary.left, **kw)
+                + ' MOD '
+                + self.process(binary.right, **kw))
 
     def visit_ne_binary(self, binary, operator, **kw):
-        return self.process(binary.left, **kw) + " <> " + \
-            self.process(binary.right, **kw)
+        return (self.process(binary.left, **kw)
+                + ' <> '
+                + self.process(binary.right, **kw))
 
     def limit_clause(self, select, **kwargs):
-        """Limit after SELECT is implemented in get_select_precolumns"""
-        return ""
+        """Limit after SELECT is implemented in get_select_precolumns."""
+
+        return ''
+
 
 class TeradataDDLCompiler(compiler.DDLCompiler):
 
@@ -57,412 +58,438 @@ class TeradataDDLCompiler(compiler.DDLCompiler):
         index = create.element
         self._verify_index_table(index)
         preparer = self.preparer
-        text = "CREATE "
+
+        text = 'CREATE '
         if index.unique:
-            text += "UNIQUE "
-        text += "INDEX %s (%s) ON %s" \
-            % (
-                self._prepared_index_name(index,
-                                          include_schema=include_schema),
-                ', '.join(
-                    self.sql_compiler.process(
-                        expr, include_table=False, literal_binds=True) for
-                    expr in index.expressions),
-                preparer.format_table(index.table,
-                                      use_schema=include_table_schema)
-            )
+            text += 'UNIQUE '
+        text += 'INDEX {} ({}) ON {}'.format(
+            self._prepared_index_name(index, include_schema=include_schema),
+            ', '.join(self.sql_compiler.process(expr, include_table=False,
+                                                literal_binds=True)
+                      for expr in index.expressions),
+            preparer.format_table(index.table, use_schema=include_table_schema))
+
         return text
 
     def create_table_suffix(self, table):
-        """
-        This hook processes the optional keyword teradata_suffixes
-        ex.
-        from sqlalchemy_teradata.compiler import\
-                        TDCreateTableSuffix as Opts
-        t = Table( 'name', meta,
-                   ...,
-                   teradata_suffixes=Opts.
-                                      fallback().
-                                      log().
-                                      with_journal_table(t2.name)
+        """This hook processes the optional keyword teradata_suffixes.
 
-        CREATE TABLE name, fallback,
-        log,
-        with journal table = [database/user.]table_name(
-          ...
-        )
+        Example:
+            from sqlalchemy_teradata.compiler import TDCreateTableSuffix as Opts
+            t = Table('name', meta,
+                       ...,
+                       teradata_suffixes=Opts.
+                                         fallback().
+                                         log().
+                                         with_journal_table(t2.name)
 
-        teradata_suffixes can also be a list of strings to be appended
-        in the order given.
+            CREATE TABLE name, fallback,
+            log,
+            with journal table = [database/user.]table_name(
+              ...
+            )
+
+        Note:
+            teradata_suffixes can also be a list of strings to be appended in
+            the order given.
         """
-        post=table.dialect_kwargs['teradata_suffixes']
+
+        post = table.dialect_kwargs['teradata_suffixes']
 
         if isinstance(post, TDCreateTableSuffix):
             if post.opts:
                 return ',\n' + post.compile()
-            else:
-                return post
-        elif post:
-            assert type(post) is list
-            res = ',\n ' + ',\n'.join(post)
-        else:
-            return ''
+
+            return post
+
+        if post:
+            assert isinstance(post, list)
+            return ',\n' + ',\n'.join(post)
+
+        return ''
 
     def post_create_table(self, table):
-
-        """
-        This hook processes the TDPostCreateTableOpts given by the
+        """This hook processes the TDPostCreateTableOpts given by the
         teradata_post_create dialect kwarg for Table.
 
-        Note that there are other dialect kwargs defined that could possibly
-        be processed here.
-
-        See the kwargs defined in dialect.TeradataDialect
-
-        Ex.
-        from sqlalchemy_teradata.compiler import TDCreateTablePost as post
-        Table('t1', meta,
-               ...
-               ,
-               teradata_post_create = post().
+        Example:
+            from sqlalchemy_teradata.compiler import TDCreateTablePost as post
+            Table('t1', meta,
+                   ...
+                   ,
+                   teradata_post_create=post().
                                         fallback().
                                         checksum('on').
                                         mergeblockratio(85)
 
-        creates ddl for a table like so:
+            creates ddl for a table like so:
 
-        CREATE TABLE "t1" ,
-             checksum=on,
-             fallback,
-             mergeblockratio=85 (
-               ...
-        )
+            CREATE TABLE "t1" ,
+                 checksum=on,
+                 fallback,
+                 mergeblockratio=85 (
+                   ...
+            )
 
+        Note:
+            There are other dialect kwargs defined that could possibly be
+            processed here. See the kwargs defined in dialect.TeradataDialect.
         """
+
         kw = table.dialect_kwargs['teradata_post_create']
-        if isinstance(kw, TDCreateTablePost):
-            if kw:
-              return '\n' + kw.compile()
+        if isinstance(kw, TDCreateTablePost) and kw:
+            return '\n' + kw.compile()
+
         return ''
 
     def get_column_specification(self, column, **kwargs):
 
         if column.table is None:
-            raise exc.CompileError(
-                "Teradata requires Table-bound columns "
-                "in order to generate DDL")
+            raise exc.CompileError('Teradata requires Table-bound columns in '
+                                   'order to generate DDL')
 
-        colspec = (self.preparer.format_column(column) + " " +\
-                        self.dialect.type_compiler.process(
-                          column.type, type_expression=column))
+        colspec = '{} {}'.format(self.preparer.format_column(column),
+                                 self.dialect.type_compiler.process(
+                                     column.type, type_expression=column))
 
         # Null/NotNull
         if column.nullable is not None:
             if not column.nullable or column.primary_key:
-                colspec += " NOT NULL"
+                colspec += ' NOT NULL'
 
         return colspec
 
+
 class TeradataOptions(object):
-    """
-    An abstract base class for various schema object options
-    """
+    """An abstract base class for various schema object options."""
+
     def _append(self, opts, val):
-        _opts=opts.copy()
+        _opts = opts.copy()
         _opts.update(val)
         return _opts
 
     def compile(self):
+        """Processes the argument options and returns a string representation.
         """
-        processes the argument options and returns a string representation
-        """
+
         pass
 
     def format_cols(self, key, val):
+        """
+        Args:
+            key (str): The key of a Teradata option.
+            val (list(str)): The values of a Teradata option. Can have an
+                optional dict as the last element; the dict values are appended
+                at the end of the col list.
+        """
 
-        """
-        key is a string
-        val is a list of strings with an optional dict as the last element
-            the dict values are appended at the end of the col list
-        """
         res = ''
-        col_expr = ', '.join([x for x in val if type(x) is str])
+        col_expr = ', '.join([x for x in val if isinstance(x, str)])
 
         res += key + '( ' + col_expr + ' )'
-        if type(val[-1]) is dict:
-            # process syntax elements (dict) after cols
-            res += ' '.join( val[-1]['post'] )
+        if isinstance(val[-1], dict):
+            # Process syntax elements (dict) after cols
+            res += ' '.join(val[-1]['post'])
+
         return res
 
+
 class TDCreateTableSuffix(TeradataOptions):
+    """A generative class for Teradata create table options specified in
+    teradata_suffixes.
     """
-    A generative class for Teradata create table options
-    specified in teradata_suffixes
-    """
+
     def __init__(self, opts={}):
         """
-        opts is a dictionary that can be pre-populated with key-value pairs
-        that may be overidden if the keys conflict with those entered
-        in the methods below. See the compile method to see how the dict
-        gets processed.
+        Args:
+            opts (dict): Can be pre-populated with key-value pairs that may be
+                overidden if the keys conflict with those entered in the
+                methods below. See the compile method to see how the dict gets
+                processed.
         """
+
         self.opts = opts
 
     def compile(self):
         def process_opts(opts):
-            return [key if opts[key] is None else '{}={}'.\
-                            format(key, opts[key]) for key in opts]
+            return [key if opts[key] is None else '{}={}'.format(key, opts[key])
+                    for key in opts]
 
         res = ',\n'.join(process_opts(self.opts))
         return res
 
     def fallback(self, enabled=True):
         res = 'fallback' if enabled else 'no fallback'
-        return self.__class__(self._append(self.opts, {res:None}))
+        return self.__class__(self._append(self.opts, {res: None}))
 
     def log(self, enabled=True):
         res = 'log' if enabled else 'no log'
-        return self.__class__(self._append(self.opts, {res:None}))
+        return self.__class__(self._append(self.opts, {res: None}))
 
     def with_journal_table(self, tablename=None):
         """
-        tablename is the schema.tablename of a table.
-        For example, if t1 is a SQLAlchemy:
+        Args:
+            tablename (str): The schema.tablename of a table.
+
+        Example:
+            If t1 is a SQLAlchemy Table:
                 with_journal_table(t1.name)
         """
-        return self.__class__(self._append(self.opts,\
-                        {'with journal table':tablename}))
+
+        return self.__class__(
+            self._append(self.opts, {'with journal table': tablename}))
 
     def before_journal(self, prefix='dual'):
         """
-        prefix is a string taking vaues of 'no' or 'dual'
+        Args:
+            prefix (str): A string taking vaues of 'no' or 'dual'.
         """
+
         assert prefix in ('no', 'dual')
-        res = prefix+' '+'before journal'
-        return self.__class__(self._append(self.opts, {res:None}))
+        res = prefix + ' ' + 'before journal'
+        return self.__class__(self._append(self.opts, {res: None}))
 
     def after_journal(self, prefix='not local'):
         """
-        prefix is a string taking vaues of 'no', 'dual', 'local',
-        or 'not local'.
+        Args:
+            prefix (str): A string taking vaues of 'no', 'dual', 'local',
+                or 'not local'.
         """
+
         assert prefix in ('no', 'dual', 'local', 'not local')
-        res = prefix+' '+'after journal'
-        return self.__class__(self._append(self.opts, {res:None}))
+        res = prefix + ' ' + 'after journal'
+        return self.__class__(self._append(self.opts, {res: None}))
 
     def checksum(self, integrity_checking='default'):
         """
-        integrity_checking is a string taking vaues of 'on', 'off',
-        or 'default'.
+        Args:
+            integrity_checking (str): A string taking vaues of 'on', 'off',
+                or 'default'.
         """
+
         assert integrity_checking in ('on', 'off', 'default')
-        return self.__class__(self._append(self.opts,\
-                        {'checksum':integrity_checking}))
+        return self.__class__(
+            self._append(self.opts, {'checksum': integrity_checking}))
 
     def freespace(self, percentage=0):
         """
-        percentage is an integer taking values from 0 to 75.
+        Args:
+            percentage (int): An integer taking values from 0 to 75 inclusive.
         """
-        return self.__class__(self._append(self.opts,\
-                        {'freespace':percentage}))
+
+        return self.__class__(
+            self._append(self.opts, {'freespace': percentage}))
 
     def no_mergeblockratio(self):
-        return self.__class__(self._append(self.opts,\
-                        {'no mergeblockratio':None}))
+        return self.__class__(
+            self._append(self.opts, {'no mergeblockratio': None}))
 
     def mergeblockratio(self, integer=None):
         """
-        integer takes values from 0 to 100 inclusive.
+        Args:
+            integer (int): An integer taking values from 0 to 100 inclusive.
         """
-        res = 'default mergeblockratio' if integer is None\
-                                        else 'mergeblockratio'
-        return self.__class__(self._append(self.opts, {res:integer}))
+
+        res = ('default mergeblockratio'
+               if integer is None
+               else 'mergeblockratio')
+        return self.__class__(self._append(self.opts, {res: integer}))
 
     def min_datablocksize(self):
-            return self.__class__(self._append(self.opts,\
-                            {'minimum datablocksize':None}))
+        return self.__class__(
+            self._append(self.opts, {'minimum datablocksize': None}))
 
     def max_datablocksize(self):
-        return self.__class__(self._append(self.opts,\
-                        {'maximum datablocksize':None}))
+        return self.__class__(
+            self._append(self.opts, {'maximum datablocksize': None}))
 
     def datablocksize(self, data_block_size=None):
         """
-        data_block_size is an integer specifying the number of bytes
+        Args:
+            data_block_size (int): An integer specifying the number of bytes.
         """
-        res = 'datablocksize' if data_block_size is not None\
-                              else 'default datablocksize'
-        return self.__class__(self._append(self.opts,\
-                                           {res:data_block_size}))
+
+        res = ('datablocksize'
+               if data_block_size is not None
+               else 'default datablocksize')
+        return self.__class__(
+            self._append(self.opts, {res: data_block_size}))
 
     def blockcompression(self, opt='default'):
         """
-        opt is a string that takes values 'autotemp',
-        'default', 'manual', or 'never'
+        Args:
+            opt (str): A string taking values 'autotemp', 'default', 'manual',
+                or 'never'.
         """
-        return self.__class__(self._append(self.opts,\
-                        {'blockcompression':opt}))
+
+        assert opt in ('autotemp', 'default', 'manual', 'never')
+        return self.__class__(
+            self._append(self.opts, {'blockcompression': opt}))
 
     def with_no_isolated_loading(self, concurrent=False):
-        res = 'with no ' +\
-            ('concurrent ' if concurrent else '') +\
-            'isolated loading'
-        return self.__class__(self._append(self.opts, {res:None}))
+        res = ('with no '
+               + ('concurrent ' if concurrent else '')
+               + 'isolated loading')
+        return self.__class__(self._append(self.opts, {res: None}))
 
     def with_isolated_loading(self, concurrent=False, opt=None):
         """
-        opt is a string that takes values 'all', 'insert', 'none',
-        or None
+        Args:
+            opt (string): A string taking values 'all', 'insert', 'none',
+                or None.
         """
+
         assert opt in ('all', 'insert', 'none', None)
         for_stmt = ' for ' + opt if opt is not None else ''
-        res = 'with ' +\
-            ('concurrent ' if concurrent else '') +\
-            'isolated loading' + for_stmt
-        return self.__class__(self._append(self.opts, {res:None}))
+        res = ('with '
+               + ('concurrent ' if concurrent else '')
+               + 'isolated loading' + for_stmt)
+        return self.__class__(self._append(self.opts, {res: None}))
 
 
 class TDCreateTablePost(TeradataOptions):
+    """A generative class for building post create table options given in the
+    teradata_post_create keyword for Table.
     """
-    A generative class for building post create table options
-    given in the teradata_post_create keyword for Table
-    """
+
     def __init__(self, opts={}):
         self.opts = opts
 
     def compile(self):
         def process(opts):
-            return [key.upper() if opts[key] is None\
-                       else self.format_cols(key, opts[key])\
-                       for key in opts]
+            return [(key.upper()
+                     if opts[key] is None
+                     else self.format_cols(key, opts[key]))
+                    for key in opts]
 
         return ',\n'.join(process(self.opts))
 
     def no_primary_index(self):
-        return self.__class__(self._append(self.opts, {'no primary index':None}))
+        return self.__class__(
+            self._append(self.opts, {'no primary index': None}))
 
     def primary_index(self, name=None, unique=False, cols=[]):
         """
-        name is a string for the primary index
-        if unique is true then unique primary index is specified
-        cols is a list of column names
+        Args:
+            name (str): The primary index.
+            unique (bool): If true then unique primary index is specified.
+            cols (list(str)): A list of column names.
         """
+
         res = 'unique primary index' if unique else 'primary index'
         res += ' ' + name if name is not None else ''
-        return self.__class__(self._append(self.opts, {res:cols}))
-
+        return self.__class__(self._append(self.opts, {res: cols}))
 
     def primary_amp(self, name=None, cols=[]):
+        """
+        Args:
+            name (str): An optional string for the name of the amp index.
+            cols (list(str)): A list of column names.
+        """
 
-        """
-        name is an optional string for the name of the amp index
-        cols is a list of column names (strings)
-        """
         res = 'primary amp index'
         res += ' ' + name if name is not None else ''
-        return self.__class__(self._append(self.opts, {res:cols}))
-
+        return self.__class__(self._append(self.opts, {res: cols}))
 
     def partition_by_col(self, all_but=False, cols={}, rows={}, const=None):
-
         """
-        ex:
+        Args:
+            cols (dict): A dictionary whose key is the column name and value
+                True or False specifying AUTO COMPRESS or NO AUTO COMPRESS
+                respectively. The columns are stored with COLUMN format.
+            rows (dict): A dictionary similar to cols except the ROW format is
+                used.
+            const (int): An unsigned BIGINT.
 
-        Opts.partition_by_col(cols ={'c1': True, 'c2': False, 'c3': None},
-                     rows ={'d1': True, 'd2':False, 'd3': None},
-                     const = 1)
-        will emit:
+        Example:
+            Opts.partition_by_col(cols={'c1': True, 'c2': False, 'c3': None},
+                                  rows={'d1': True, 'd2': False, 'd3': None},
+                                  const=1)
 
-        partition by(
-          column(
-            column(c1) auto compress,
-            column(c2) no auto compress,
-            column(c3),
-            row(d1) auto compress,
-            row(d2) no auto compress,
-            row(d3))
-            add 1
-            )
+            will emit:
 
-        cols is a dictionary whose key is the column name and value True or False
-        specifying AUTO COMPRESS or NO AUTO COMPRESS respectively. The columns
-        are stored with COLUMN format.
-
-        rows is a dictionary similar to cols except the ROW format is used
-
-        const is an unsigned BIGINT
+                partition by(
+                    column(
+                        column(c1) auto compress,
+                        column(c2) no auto compress,
+                        column(c3),
+                        row(d1) auto compress,
+                        row(d2) no auto compress,
+                        row(d3))
+                        add 1
+                    )
         """
-        res = 'partition by( column all but' if all_but else\
-                        'partition by( column'
+
+        res = ('partition by( column all but'
+               if all_but
+               else 'partition by( column')
+
         c = self._visit_partition_by(cols, rows)
-        c += [{'post': (['add %s' % str(const)]
-            if const is not None
-            else []) + [')']}]
+        c += [{'post': ((['add {}'.format(str(const))]
+                         if const is not None
+                         else [])
+                        + [')'])}]
 
         return self.__class__(self._append(self.opts, {res: c}))
 
     def _visit_partition_by(self, cols, rows):
-
         if cols:
-            c = ['column('+ k +') auto compress '\
-                            for k,v in cols.items() if v is True]
-
-            c += ['column('+ k +') no auto compress'\
-                            for k,v in cols.items() if v is False]
-
-            c += ['column('+ k +')' for k,v in cols.items() if v is None]
+            c = ['column({}) auto compress '.format(k)
+                 for k, v in cols.items() if v is True]
+            c += ['column({}) no auto compress'.format(k)
+                  for k, v in cols.items() if v is False]
+            c += ['column({})'.format(k)
+                  for k, v in cols.items() if v is None]
 
         if rows:
-            c += ['row('+ k +') auto compress'\
-                            for k,v in rows.items() if v is True]
-
-            c += ['row('+ k +') no auto compress'\
-                            for k,v in rows.items() if v is False]
-
-            c += ['row('+ k +')' for k,v in rows.items() if v is None]
+            c += ['row({}) auto compress'.format(k)
+                  for k, v in rows.items() if v is True]
+            c += ['row({}) no auto compress'.format(k)
+                  for k, v in rows.items() if v is False]
+            c += ['row({})'.format(k)
+                  for k, v in rows.items() if v is None]
 
         return c
 
-
-    def partition_by_col_auto_compress(self, all_but=False, cols={},\
+    def partition_by_col_auto_compress(self, all_but=False, cols={},
                                        rows={}, const=None):
-
-        res = 'partition by( column auto compress all but' if all_but else\
-                        'partition by( column auto compress'
-        c = self._visit_partition_by(cols,rows)
-        c += [{'post': (['add %s' % str(const)]
-            if const is not None
-            else []) + [')']}]
+        res = ('partition by( column auto compress all but'
+               if all_but
+               else 'partition by( column auto compress')
+        c = self._visit_partition_by(cols, rows)
+        c += [{'post': ((['add {}'.format(str(const))]
+                         if const is not None
+                         else [])
+                        + [')'])}]
 
         return self.__class__(self._append(self.opts, {res: c}))
 
-
-    def partition_by_col_no_auto_compress(self, all_but=False, cols={},\
+    def partition_by_col_no_auto_compress(self, all_but=False, cols={},
                                           rows={}, const=None):
-
-        res = 'partition by( column no auto compress all but' if all_but else\
-                        'partition by( column no auto compression'
-        c = self._visit_partition_by(cols,rows)
-        c += [{'post': (['add %s' % str(const)]
-            if const is not None
-            else []) + [')']}]
+        res = ('partition by( column no auto compress all but'
+               if all_but
+               else 'partition by( column no auto compression')
+        c = self._visit_partition_by(cols, rows)
+        c += [{'post': ((['add {}'.format(str(const))]
+                         if const is not None
+                         else [])
+                        + [')'])}]
 
         return self.__class__(self._append(self.opts, {res: c}))
-
 
     def index(self, index):
-        """
-        Index is created with dialect specific keywords to
-        include loading and ordering syntax elements
+        """Index is created with dialect specific keywords to include loading
+        and ordering syntax elements.
 
-        index is a sqlalchemy.sql.schema.Index object.
+        Args:
+            index (obj): A sqlalchemy.sql.schema.Index object.
         """
+
         return self.__class__(self._append(self.opts, {res: c}))
-
 
     def unique_index(self, name=None, cols=[]):
         res = 'unique index ' + (name if name is not None else '')
-        return self.__class__(self._append(self.opts, {res:cols}))
+        return self.__class__(self._append(self.opts, {res: cols}))
 
 
 class TeradataTypeCompiler(compiler.GenericTypeCompiler):
@@ -491,103 +518,128 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
     def visit_boolean(self, type_, **kw):
         return self.visit_BYTEINT(type_, **kw)
 
-    def visit_INTERVAL_YEAR(self, type_, **kw):
-        return 'INTERVAL YEAR{}'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
+    def visit_BYTEINT(self, type_, **kw):
+        return 'BYTEINT'
 
-    def visit_INTERVAL_YEAR_TO_MONTH(self, type_, **kw):
-        return 'INTERVAL YEAR{} TO MONTH'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_MONTH(self, type_, **kw):
-        return 'INTERVAL MONTH{}'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_DAY(self, type_, **kw):
-        return 'INTERVAL DAY{}'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_DAY_TO_HOUR(self, type_, **kw):
-        return 'INTERVAL DAY{} TO HOUR'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_DAY_TO_MINUTE(self, type_, **kw):
-        return 'INTERVAL DAY{} TO MINUTE'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_DAY_TO_SECOND(self, type_, **kw):
-        return 'INTERVAL DAY{} TO SECOND{}'.format(
-            '('+str(type_.precision)+')' if type_.precision else '',
-            '('+str(type_.frac_precision)+')' if type_.frac_precision is not None  else '')
-
-    def visit_INTERVAL_HOUR(self, type_, **kw):
-        return 'INTERVAL HOUR{}'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_HOUR_TO_MINUTE(self, type_, **kw):
-        return 'INTERVAL HOUR{} TO MINUTE'.format(
-            '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_HOUR_TO_SECOND(self, type_, **kw):
-        return 'INTERVAL HOUR{} TO SECOND{}'.format(
-            '('+str(type_.precision)+')' if type_.precision else '',
-            '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
-
-    def visit_INTERVAL_MINUTE(self, type_, **kw):
-        return 'INTERVAL MINUTE{}'.format(
-              '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_INTERVAL_MINUTE_TO_SECOND(self, type_, **kw):
-        return 'INTERVAL MINUTE{} TO SECOND{}'.format(
-            '('+str(type_.precision)+')' if type_.precision else '',
-            '('+str(type_.frac_precision)+')' if type_.frac_precision is not None else '')
-
-    def visit_INTERVAL_SECOND(self, type_, **kw):
-        if type_.frac_precision is not None and type_.precision:
-          return 'INTERVAL SECOND{}'.format(
-              '('+str(type_.precision)+', '+str(type_.frac_precision)+')')
-        else:
-          return 'INTERVAL SECOND{}'.format(
-              '('+str(type_.precision)+')' if type_.precision else '')
-
-    def visit_PERIOD_DATE(self, type_, **kw):
-        return 'PERIOD(DATE)' +\
-            (" FORMAT '" + type_.format + "'" if type_.format is not None else '')
-
-    def visit_PERIOD_TIME(self, type_, **kw):
-        return 'PERIOD(TIME{}{})'.format(
-                '(' + str(type_.frac_precision) + ')'
-                    if type_.frac_precision is not None
-                    else '',
-                ' WITH TIME ZONE' if type_.timezone else '') +\
-            (" FORMAT '" + type_.format + "'" if type_.format is not None else '')
-
-    def visit_PERIOD_TIMESTAMP(self, type_, **kw):
-        return 'PERIOD(TIMESTAMP{}{})'.format(
-                '(' + str(type_.frac_precision) + ')'
-                    if type_.frac_precision is not None
-                    else '',
-                ' WITH TIME ZONE' if type_.timezone else '') +\
-            (" FORMAT '" + type_.format + "'" if type_.format is not None else '')
+    def visit_NUMBER(self, type_, **kw):
+        args = ((str(type_.precision), '')
+                if type_.scale is None
+                else (str(type_.precision), ', ' + str(type_.scale)))
+        return 'NUMBER{}'.format(
+            '' if type_.precision is None else '({}{})'.format(*args))
 
     def visit_TIME(self, type_, **kw):
         tz = ' WITH TIME ZONE' if type_.timezone else ''
         prec = self._get('precision', type_, kw)
-        prec = '%s' % '('+str(prec)+')' if prec is not None else ''
+        prec = '({})'.format(str(prec)) if prec is not None else ''
         return 'TIME{}{}'.format(prec, tz)
 
     def visit_TIMESTAMP(self, type_, **kw):
         tz = ' WITH TIME ZONE' if type_.timezone else ''
         prec = self._get('precision', type_, kw)
-        prec = '%s' % '('+str(prec)+')' if prec is not None else ''
+        prec = '({})'.format(str(prec)) if prec is not None else ''
         return 'TIMESTAMP{}{}'.format(prec, tz)
+
+    def visit_INTERVAL_YEAR(self, type_, **kw):
+        return 'INTERVAL YEAR{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_YEAR_TO_MONTH(self, type_, **kw):
+        return 'INTERVAL YEAR{} TO MONTH'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_MONTH(self, type_, **kw):
+        return 'INTERVAL MONTH{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_DAY(self, type_, **kw):
+        return 'INTERVAL DAY{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_DAY_TO_HOUR(self, type_, **kw):
+        return 'INTERVAL DAY{} TO HOUR'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_DAY_TO_MINUTE(self, type_, **kw):
+        return 'INTERVAL DAY{} TO MINUTE'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_DAY_TO_SECOND(self, type_, **kw):
+        return 'INTERVAL DAY{} TO SECOND{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '',
+            ('(' + str(type_.frac_precision) + ')'
+             if type_.frac_precision is not None
+             else ''))
+
+    def visit_INTERVAL_HOUR(self, type_, **kw):
+        return 'INTERVAL HOUR{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_HOUR_TO_MINUTE(self, type_, **kw):
+        return 'INTERVAL HOUR{} TO MINUTE'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_HOUR_TO_SECOND(self, type_, **kw):
+        return 'INTERVAL HOUR{} TO SECOND{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '',
+            ('(' + str(type_.frac_precision) + ')'
+             if type_.frac_precision is not None
+             else ''))
+
+    def visit_INTERVAL_MINUTE(self, type_, **kw):
+        return 'INTERVAL MINUTE{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_INTERVAL_MINUTE_TO_SECOND(self, type_, **kw):
+        return 'INTERVAL MINUTE{} TO SECOND{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '',
+            ('(' + str(type_.frac_precision) + ')'
+             if type_.frac_precision is not None
+             else ''))
+
+    def visit_INTERVAL_SECOND(self, type_, **kw):
+        if type_.frac_precision is not None and type_.precision:
+            return 'INTERVAL SECOND{}'.format(
+                '(' + str(type_.precision) + ', '
+                + str(type_.frac_precision) + ')')
+
+        return 'INTERVAL SECOND{}'.format(
+            '(' + str(type_.precision) + ')' if type_.precision else '')
+
+    def visit_PERIOD_DATE(self, type_, **kw):
+        return ('PERIOD(DATE)'
+                + (" FORMAT '" + type_.format + "'"
+                   if type_.format is not None
+                   else ''))
+
+    def visit_PERIOD_TIME(self, type_, **kw):
+        return ('PERIOD(TIME{}{})'.format(
+            '(' + str(type_.frac_precision) + ')'
+            if type_.frac_precision is not None
+            else '',
+            ' WITH TIME ZONE' if type_.timezone else '')
+
+                + (" FORMAT '" + type_.format + "'"
+                   if type_.format is not None
+                   else ''))
+
+    def visit_PERIOD_TIMESTAMP(self, type_, **kw):
+        return ('PERIOD(TIMESTAMP{}{})'.format(
+            '(' + str(type_.frac_precision) + ')'
+            if type_.frac_precision is not None
+            else '',
+            ' WITH TIME ZONE' if type_.timezone else '')
+
+                + (" FORMAT '" + type_.format + "'"
+                   if type_.format is not None
+                   else ''))
 
     def _string_process(self, type_, datatype, **kw):
         length = self._get('length', type_, kw)
-        length = '(%s)' % length if length is not None  else ''
+        length = '({})'.format(str(length)) if length is not None  else ''
 
         charset = self._get('charset', type_, kw)
-        charset = ' CHAR SET %s' % charset if charset is not None else ''
+        charset = ' CHAR SET {}'.format(charset) if charset is not None else ''
 
         res = '{}{}{}'.format(datatype, length, charset)
         return res
@@ -598,8 +650,8 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
     def visit_VARCHAR(self, type_, **kw):
         if type_.length is None:
             return self._string_process(type_, 'LONG VARCHAR', **kw)
-        else:
-            return self._string_process(type_, 'VARCHAR', length=type_.length, **kw)
+
+        return self._string_process(type_, 'VARCHAR', length=type_.length, **kw)
 
     def visit_CLOB(self, type_, **kw):
         multi = self._get('multiplier', type_, kw)
@@ -608,9 +660,6 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
             return self._string_process(type_, 'CLOB', length=length, **kw)
 
         return self._string_process(type_, 'CLOB', **kw)
-
-    def visit_BYTEINT(self, type_, **kw):
-        return 'BYTEINT'
 
     def visit_BYTE(self, type_, **kw):
         return 'BYTE{}'.format(
@@ -623,17 +672,10 @@ class TeradataTypeCompiler(compiler.GenericTypeCompiler):
     def visit_BLOB(self, type_, **kw):
         multiplier = self._get('multiplier', type_, kw)
         return 'BLOB{}'.format(
-            '(' + str(type_.length) + \
-                '{})'.format(multiplier if multiplier is not None else '')
-            if type_.length is not None else '')
-
-    def visit_NUMBER(self, type_, **kw):
-        args = (str(type_.precision), '') if type_.scale is None \
-               else (str(type_.precision), ', ' + str(type_.scale))
-        return 'NUMBER{}'.format(
-            '' if type_.precision is None else '({}{})'.format(*args))
-
-
+            ('({}'.format(str(type_.length))
+             + '{})'.format(multiplier if multiplier is not None else ''))
+            if type_.length is not None
+            else '')
 
 
 #@compiles(Select, 'teradata')

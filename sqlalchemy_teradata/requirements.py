@@ -28,23 +28,25 @@ from sqlalchemy.testing import exclusions
 
 
 class Requirements(SuiteRequirements):
+
     @property
     def datetime_microseconds(self):
-        """target dialect supports representation of Python
-        datetime.datetime() with microsecond objects."""
+        """Target dialect supports representation of Python datetime.datetime()
+        with microsecond objects.
+        """
+
         return exclusions.open()
 
     @property
     def offset(self):
-        """target database can render OFFSET, or an equivalent, in a
-        SELECT.
-        """
+        """Target database can render OFFSET, or an equivalent, in a SELECT."""
+
         return exclusions.closed()
 
     @property
     def bound_limit_offset(self):
-        """target database can render LIMIT and/or OFFSET using a bound
-        parameter
+        """Target database can render LIMIT and/or OFFSET using a bound
+        parameter.
         """
-        return exclusions.closed()
 
+        return exclusions.closed()
