@@ -145,10 +145,11 @@ class TestCompileSuffixDDL(fixtures.TestBase):
         self.td_engine = create_engine('teradata://', strategy='mock', executor=dump)
         self.metadata  = MetaData(bind=self.td_engine)
 
-    def test_create_suffix(self):
+    def test_create_suffix_with_option(self):
         """
         Tests SQL compilation of CREATE TABLE with (all) teradata dialect
-        specific suffixes.
+        specific suffixes. The suffixes are specified by an instance of
+        TDCreateTableSuffix.
         """
         my_table = Table('tablename', self.metadata,
             Column('columnname', sqlalch_td.INTEGER),
@@ -167,6 +168,49 @@ class TestCompileSuffixDDL(fixtures.TestBase):
                                       .blockcompression() \
                                       .with_no_isolated_loading(True) \
                                       .with_isolated_loading(True, 'all'))
+        self.metadata.create_all()
+
+        suffix_ddl = self.last_compiled[
+            self.last_compiled.index(',')+1:self.last_compiled.index('(')]
+        assert(suffix_ddl ==
+            '\nfallback,' \
+            '\nlog,' \
+            '\nwith journal table=anothertablename,' \
+            '\ndual before journal,' \
+            '\nnot local after journal,' \
+            '\nchecksum=default,' \
+            '\nfreespace=0,' \
+            '\nno mergeblockratio,' \
+            '\ndefault mergeblockratio,' \
+            '\nminimum datablocksize,' \
+            '\nmaximum datablocksize,' \
+            '\nblockcompression=default,' \
+            '\nwith no concurrent isolated loading,' \
+            '\nwith concurrent isolated loading for all ')
+
+    def test_create_suffix_with_list(self):
+        """
+        Tests SQL compilation of CREATE TABLE with (all) teradata dialect
+        specific suffixes. The suffixes are specified as a list of strings.
+        """
+        my_table = Table('tablename', self.metadata,
+            Column('columnname', sqlalch_td.INTEGER),
+            teradata_suffixes=[
+                'fallback',
+                'log',
+                'with journal table=anothertablename',
+                'dual before journal',
+                'not local after journal',
+                'checksum=default',
+                'freespace=0',
+                'no mergeblockratio',
+                'default mergeblockratio',
+                'minimum datablocksize',
+                'maximum datablocksize',
+                'blockcompression=default',
+                'with no concurrent isolated loading',
+                'with concurrent isolated loading for all',
+            ])
         self.metadata.create_all()
 
         suffix_ddl = self.last_compiled[
